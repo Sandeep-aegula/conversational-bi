@@ -1,0 +1,29 @@
+# Node.js
+node_modules/
+.npm
+/frontend/.next/
+/frontend/out/
+/frontend/build/
+/frontend/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv
+*.sqlite3
+/backend/storage/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Other
+*.log
