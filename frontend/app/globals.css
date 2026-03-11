@@ -1,48 +1,74 @@
 @import "tailwindcss";
 
 :root {
-  --background: #080b14;
-  --foreground: #ffffff;
+  --font-mono: var(--font-share-tech-mono), 'Courier New', monospace;
+  --font-body: var(--font-rajdhani), sans-serif;
+  --font-display: var(--font-orbitron), sans-serif;
+
+  --bg-app: #0A0A0F;
+  --bg-panel-left: #0D0B14;
+  --bg-panel-right: #0D0B14;
+  --bg-chart: #111118;
+
+  --violet: #7C3AED;
+  --magenta: #E11D91;
+  --cyan: #00E5FF;
+  --lime: #A3E635;
+  --orange: #FF6B2B;
+  --coral: #FF4D6D;
+  --teal: #00CED1;
+  --purple-mid: #9333EA;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
 }
 
-@import "tailwindcss";
-
-:root {
-  --background: #080b14;
-  --foreground: #ffffff;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-dm-sans);
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-dm-sans), sans-serif;
-  margin: 0;
-  min-height: 100vh;
+  background: #0A0A0F;
+  color: #FFFFFF;
+  font-family: var(--font-body);
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
 }
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #7C3AED, #E11D91);
+  border-radius: 4px;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15,17,23,0.5); 
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #9333EA, #FF4D6D);
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(99,102,241,0.5); 
-  border-radius: 10px;
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #7C3AED, #E11D91);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(99,102,241,0.8); 
-}
+
+/* Font utilities */
+.font-mono { font-family: var(--font-mono) !important; }
+.font-body { font-family: var(--font-body) !important; }
+.font-display { font-family: var(--font-display) !important; }
+
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

@@ -1,0 +1,104 @@
+model,year,price,transmission,mileage,fuelType,engineSize
+1 Series,2011,9990,Manual,36158,Petrol,1.6
+1 Series,2016,16500,Automatic,19050,Petrol,2.0
+1 Series,2016,12999,Manual,28000,Petrol,1.4
+1 Series,2017,18990,Automatic,16500,Petrol,2.0
+1 Series,2019,27990,Automatic,4200,Petrol,2.0
+1 Series,2015,9990,Manual,55000,Diesel,2.0
+1 Series,2018,14990,Manual,31000,Petrol,1.5
+1 Series,2014,8500,Manual,68000,Diesel,2.0
+1 Series,2016,13500,Manual,27000,Petrol,1.6
+1 Series,2017,15999,Manual,24000,Petrol,2.0
+2 Series,2014,13900,Automatic,25400,Petrol,2.0
+2 Series,2018,21000,Automatic,10500,Petrol,2.0
+2 Series,2016,15750,Automatic,26800,Diesel,2.0
+2 Series,2019,28000,Automatic,6000,Petrol,2.0
+2 Series,2015,11990,Manual,42000,Diesel,2.0
+2 Series,2017,18500,Automatic,18000,Petrol,2.0
+3 Series,2013,6990,Manual,67000,Diesel,2.0
+3 Series,2016,14000,Manual,30000,Diesel,2.0
+3 Series,2018,22000,Automatic,15000,Petrol,2.0
+3 Series,2019,28500,Automatic,8000,Petrol,2.0
+3 Series,2014,9500,Manual,55000,Diesel,2.0
+3 Series,2015,11000,Manual,45000,Diesel,2.0
+3 Series,2017,17500,Automatic,22000,Petrol,2.0
+3 Series,2016,13200,Manual,34000,Diesel,2.0
+3 Series,2018,20900,Automatic,14000,Petrol,3.0
+3 Series,2012,7000,Manual,79000,Diesel,2.0
+3 Series,2020,32000,Automatic,3500,Petrol,2.0
+4 Series,2015,14990,Automatic,31000,Diesel,2.0
+4 Series,2017,22500,Automatic,17000,Petrol,2.0
+4 Series,2018,25000,Automatic,12000,Petrol,3.0
+4 Series,2016,18000,Automatic,22000,Diesel,2.0
+4 Series,2019,31000,Automatic,6500,Petrol,3.0
+4 Series,2014,12500,Manual,44000,Diesel,2.0
+5 Series,2013,10000,Automatic,62000,Diesel,2.0
+5 Series,2016,17500,Automatic,28000,Diesel,3.0
+5 Series,2018,27000,Automatic,14500,Petrol,2.0
+5 Series,2017,22000,Automatic,20000,Diesel,3.0
+5 Series,2019,35000,Automatic,8000,Petrol,2.0
+5 Series,2015,14000,Automatic,38000,Diesel,2.0
+5 Series,2020,42000,Automatic,4000,Petrol,3.0
+5 Series,2014,11500,Automatic,50000,Diesel,2.0
+5 Series,2016,16900,Automatic,29000,Diesel,2.0
+6 Series,2014,18500,Automatic,35000,Diesel,3.0
+6 Series,2017,32000,Automatic,19000,Petrol,3.0
+6 Series,2016,26000,Automatic,25000,Diesel,3.0
+6 Series,2015,21000,Automatic,31000,Petrol,3.0
+7 Series,2013,19500,Automatic,47000,Diesel,3.0
+7 Series,2016,35000,Automatic,22000,Diesel,3.0
+7 Series,2018,55000,Automatic,10000,Petrol,3.0
+7 Series,2019,67000,Automatic,6000,Petrol,3.0
+7 Series,2015,28000,Automatic,33000,Diesel,3.0
+7 Series,2017,44000,Automatic,18000,Petrol,3.0
+M2,2017,36000,Manual,14000,Petrol,3.0
+M2,2018,42000,Manual,9500,Petrol,3.0
+M2,2019,48500,Manual,5000,Petrol,3.0
+M2,2016,33500,Manual,18000,Petrol,3.0
+M3,2014,32000,Manual,27000,Petrol,3.0
+M3,2016,42000,Manual,16000,Petrol,3.0
+M3,2018,62000,Automatic,8000,Petrol,3.0
+M3,2019,71000,Automatic,4000,Petrol,3.0
+M4,2015,38000,Manual,22000,Petrol,3.0
+M4,2017,52000,Automatic,11000,Petrol,3.0
+M4,2019,68000,Automatic,5000,Petrol,3.0
+M5,2013,38000,Automatic,45000,Petrol,4.4
+M5,2016,55000,Automatic,22000,Petrol,4.4
+M5,2018,73000,Automatic,9000,Petrol,4.4
+M5,2019,85000,Automatic,4500,Petrol,4.4
+X1,2015,12000,Manual,38000,Diesel,2.0
+X1,2017,18500,Automatic,19000,Petrol,2.0
+X1,2018,22000,Automatic,12000,Petrol,2.0
+X1,2019,27000,Automatic,7000,Petrol,2.0
+X1,2016,14500,Manual,28000,Diesel,2.0
+X2,2018,24000,Automatic,12000,Petrol,2.0
+X2,2019,28000,Automatic,7000,Petrol,2.0
+X3,2014,15000,Automatic,42000,Diesel,2.0
+X3,2016,21000,Automatic,24000,Diesel,2.0
+X3,2018,31000,Automatic,11000,Petrol,2.0
+X3,2017,26000,Automatic,19000,Diesel,3.0
+X3,2019,38000,Automatic,6000,Petrol,3.0
+X3,2015,18000,Automatic,33000,Diesel,2.0
+X4,2015,22000,Automatic,32000,Diesel,2.0
+X4,2018,35000,Automatic,13000,Petrol,3.0
+X4,2017,29000,Automatic,20000,Diesel,2.0
+X5,2012,16000,Automatic,74000,Diesel,3.0
+X5,2015,28000,Automatic,34000,Diesel,3.0
+X5,2017,38000,Automatic,20000,Diesel,3.0
+X5,2018,48000,Automatic,11000,Petrol,3.0
+X5,2019,58000,Automatic,7000,Petrol,3.0
+X5,2016,33000,Automatic,26000,Diesel,3.0
+X6,2013,25000,Automatic,55000,Diesel,3.0
+X6,2016,37000,Automatic,24000,Diesel,3.0
+X6,2018,54000,Automatic,12000,Petrol,3.0
+X6,2019,63000,Automatic,5000,Petrol,3.0
+Z4,2015,22000,Automatic,29000,Petrol,2.0
+Z4,2017,29500,Automatic,15000,Petrol,2.0
+Z4,2019,42000,Automatic,5000,Petrol,2.0
+i3,2014,16000,Automatic,28000,Electric,0.0
+i3,2016,19500,Automatic,18000,Electric,0.0
+i3,2018,24000,Automatic,10000,Electric,0.0
+i3,2019,29000,Automatic,4000,Electric,0.0
+i8,2015,75000,Automatic,18000,Hybrid,1.5
+i8,2017,92000,Automatic,10000,Hybrid,1.5
+i8,2018,105000,Automatic,5000,Hybrid,1.5

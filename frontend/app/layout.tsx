@@ -1,15 +1,28 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import { Share_Tech_Mono, Rajdhani, Orbitron } from "next/font/google";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const shareTechMono = Share_Tech_Mono({
+  weight: "400",
+  variable: "--font-share-tech-mono",
+  subsets: ["latin"],
+});
+
+const rajdhani = Rajdhani({
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-rajdhani",
+  subsets: ["latin"],
+});
+
+const orbitron = Orbitron({
+  weight: ["400", "700", "900"],
+  variable: "--font-orbitron",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "ConversationalBI Dashboard",
-  description: "Instant insights from any CSV",
+  title: "PRISM — Conversational Data Intelligence",
+  description: "Cyberpunk-aesthetic conversational BI dashboard powered by AI",
 };
 
 export default function RootLayout({
@@ -18,8 +31,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dmSans.variable}`}>
-      <body className="antialiased text-white font-sans">
+    <html lang="en" className={`${shareTechMono.variable} ${rajdhani.variable} ${orbitron.variable}`}>
+      <body className="antialiased">
         {children}
       </body>
     </html>
