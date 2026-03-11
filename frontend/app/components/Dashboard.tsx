@@ -12,7 +12,7 @@ import LeftPanel from "./LeftPanel";
 import MiddlePanel from "./MiddlePanel";
 import RightPanel from "./RightPanel";
 
-const BACKEND = "http://localhost:8000";
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 const CHART_COLORS = [
   "#7C3AED", "#00E5FF", "#E11D91", "#A3E635",
   "#FF6B2B", "#FF4D6D", "#00CED1", "#9333EA",
