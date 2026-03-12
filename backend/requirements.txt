@@ -2,6 +2,8 @@ fastapi
 uvicorn
 python-multipart
 pandas
-google-genai
+groq
 python-dotenv
 pydantic
+openpyxl
+xlrd

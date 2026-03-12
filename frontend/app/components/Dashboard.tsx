@@ -12,7 +12,8 @@ import LeftPanel from "./LeftPanel";
 import MiddlePanel from "./MiddlePanel";
 import RightPanel from "./RightPanel";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+// Direct backend URL — avoids proxy issues with multipart uploads
+const BACKEND = "http://localhost:8000";
 const CHART_COLORS = [
   "#7C3AED", "#00E5FF", "#E11D91", "#A3E635",
   "#FF6B2B", "#FF4D6D", "#00CED1", "#9333EA",
@@ -124,7 +125,7 @@ function renderChart(chart: any) {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 10, right: 16, left: -10, bottom: needsRotation ? 55 : 10 }} barCategoryGap="30%">
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-        <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "#475569" }} tickFormatter={(v: string) => String(v).slice(0, 14)} />
+        <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "##475569" }} tickFormatter={(v: string) => String(v).slice(0, 14)} />
         <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "#475569" }} />
         <RechartsTooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
         {yKeys.map((key: string, i: number) => (
@@ -147,7 +148,9 @@ export default function Dashboard() {
   const [uploadError, setUploadError] = useState("");
   const [selectedCol, setSelectedCol] = useState<string | null>(null);
   const [showDataView, setShowDataView] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chartsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
@@ -175,17 +178,42 @@ export default function Dashboard() {
   }, []);
 
   const handleFile = useCallback(async (file: File) => {
-    if (!file.name.endsWith(".csv")) { setUploadError("Only .csv files accepted."); return; }
+    const filename = file.name.toLowerCase();
+    const isSupported = filename.endsWith(".csv") || 
+                        filename.endsWith(".txt") || 
+                        filename.endsWith(".tsv") || 
+                        filename.endsWith(".xlsx") || 
+                        filename.endsWith(".xls");
+                        
+    if (!isSupported) { 
+      setUploadError("Only .csv, .txt, or Excel files accepted."); 
+      return; 
+    }
     setUploadError("");
     setUploadState("uploading");
     setCharts([]); setChatHistory([]); setFileInfo(null);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("UPLOAD_SOURCE", file);
 
     try {
       const res = await fetch(`${BACKEND}/api/upload`, { method: "POST", body: formData });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Upload failed"); }
+      if (!res.ok) {
+        let errorMsg = "Upload failed";
+        try {
+          const e = await res.json();
+          if (typeof e.detail === "string") {
+            errorMsg = e.detail;
+          } else if (typeof e.detail === "object" && e.detail !== null) {
+            errorMsg = JSON.stringify(e.detail);
+          } else {
+            errorMsg = e.message || errorMsg;
+          }
+        } catch {
+          errorMsg = `Upload failed (HTTP ${res.status})`;
+        }
+        throw new Error(errorMsg);
+      }
       const info: FileInfo = await res.json();
       setFileInfo(info);
       setUploadState("done");
@@ -197,18 +225,89 @@ export default function Dashboard() {
       const c0 = catCols[0] || allCols[0] || "col";
       const n0 = numCols[0] || allCols[1] || allCols[0] || "col";
 
-      const chartQuery = numCols.length > 0 && catCols.length > 0
+      // Single combined initial query — reduces API calls from 2 to 1
+      const initialQuery = numCols.length > 0 && catCols.length > 0
         ? `Show a bar chart of the top 15 "${c0}" values ordered by total "${n0}"`
         : `Show a bar chart of record count grouped by "${allCols[0]}", top 15`;
 
       setChatHistory([{ type: "ai", text: `✓ Data source loaded: ${file.name} — ${info.rows.toLocaleString()} rows × ${info.columns} columns. Running initial analysis...` }]);
-      await runQuery(`Give me a 2-sentence summary of this dataset.`, []);
-      await runQuery(chartQuery, []);
+      await runQuery(initialQuery, []);
     } catch (err: any) {
       setUploadError(err.message || "Upload failed.");
       setUploadState("idle");
     }
   }, [runQuery]);
+
+  // Reset everything for re-upload
+  const handleReset = useCallback(() => {
+    setUploadState("idle");
+    setFileInfo(null);
+    setCharts([]);
+    setChatHistory([]);
+    setInput("");
+    setUploadError("");
+    setSelectedCol(null);
+    setShowDataView(false);
+  }, []);
+
+  // Export all charts to PDF
+  const handleExportPDF = useCallback(async () => {
+    if (!chartsContainerRef.current || charts.length === 0) return;
+
+    setIsExporting(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const jsPDF = (await import("jspdf")).default;
+
+      const pdf = new jsPDF("landscape", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Add title page
+      pdf.setFillColor(10, 10, 15);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+      pdf.setTextColor(124, 58, 237);
+      pdf.setFontSize(32);
+      pdf.text("PRISM", pageWidth / 2, pageHeight / 2 - 20, { align: "center" });
+      pdf.setTextColor(203, 213, 225);
+      pdf.setFontSize(14);
+      pdf.text("Conversational Data Intelligence Report", pageWidth / 2, pageHeight / 2, { align: "center" });
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(10);
+      pdf.text(`${fileInfo?.filename || "dataset"} · ${fileInfo?.rows?.toLocaleString() || "—"} records · ${fileInfo?.columns || "—"} columns`, pageWidth / 2, pageHeight / 2 + 15, { align: "center" });
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, pageHeight / 2 + 25, { align: "center" });
+
+      // Capture each chart individually
+      const chartElements = chartsContainerRef.current.querySelectorAll("[data-chart-card]");
+      for (let i = 0; i < chartElements.length; i++) {
+        const el = chartElements[i] as HTMLElement;
+        pdf.addPage();
+        pdf.setFillColor(10, 10, 15);
+        pdf.rect(0, 0, pageWidth, pageHeight, "F");
+
+        const canvas = await html2canvas(el, {
+          backgroundColor: "#111118",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const yOffset = Math.max(10, (pageHeight - imgHeight) / 2);
+
+        pdf.addImage(imgData, "PNG", 10, yOffset, imgWidth, Math.min(imgHeight, pageHeight - 20));
+      }
+
+      pdf.save(`PRISM_Report_${fileInfo?.filename?.replace(".csv", "") || "data"}_${Date.now()}.pdf`);
+    } catch (err) {
+      console.error("PDF Export error:", err);
+      alert("Failed to export PDF. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [charts, fileInfo]);
 
   const handleChat = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,8 +352,12 @@ export default function Dashboard() {
           uploadState={uploadState}
           uploadError={uploadError}
           onFile={handleFile}
+          onReset={handleReset}
           selectedCol={selectedCol}
           onSelectCol={setSelectedCol}
+          filename={fileInfo?.filename}
+          rowCount={fileInfo?.rows}
+          colCount={fileInfo?.columns}
         />
 
         {/* Middle: static PRISM charts OR dynamic data view */}
@@ -291,6 +394,33 @@ export default function Dashboard() {
                     <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11, color: "#9333EA" }}>ANALYZING...</span>
                   </div>
                 )}
+                {/* Export PDF Button */}
+                {charts.length > 0 && (
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={isExporting}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: isExporting
+                        ? "rgba(124,58,237,0.15)"
+                        : "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(225,29,145,0.15))",
+                      border: "1px solid rgba(124,58,237,0.4)",
+                      borderRadius: 8,
+                      padding: "6px 16px",
+                      fontFamily: "var(--font-share-tech-mono)",
+                      fontSize: 11,
+                      color: isExporting ? "#64748B" : "#E11D91",
+                      cursor: isExporting ? "wait" : "pointer",
+                      letterSpacing: 1,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <span style={{ fontSize: 13 }}>{isExporting ? "⏳" : "📄"}</span>
+                    {isExporting ? "EXPORTING..." : "EXPORT_PDF"}
+                  </button>
+                )}
                 <button
                   onClick={() => setShowDataView(false)}
                   style={{
@@ -313,7 +443,7 @@ export default function Dashboard() {
                 <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "#334155", letterSpacing: 2 }}>GENERATING_VISUALIZATIONS...</div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 16 }}>
+              <div ref={chartsContainerRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 16 }}>
                 {isQuerying && (
                   <div style={{
                     background: "#111118",
@@ -327,7 +457,7 @@ export default function Dashboard() {
                   </div>
                 )}
                 {charts.map(chart => (
-                  <div key={chart.id} style={{
+                  <div key={chart.id} data-chart-card style={{
                     background: "#111118",
                     border: "1px solid rgba(255,255,255,0.07)",
                     borderRadius: 14, padding: "18px 20px",

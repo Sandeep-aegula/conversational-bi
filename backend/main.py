@@ -1,7 +1,9 @@
 import os
 import json
 import re
-import shutil
+import hashlib
+import time
+import asyncio
 import pandas as pd
 import sqlite3
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -9,11 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
-from google import genai
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
-
 
 app = FastAPI()
 
@@ -25,34 +26,109 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-api_key = os.getenv("GEMINI_API_KEY")
-genai_client = None
-if api_key:
-    genai_client = genai.Client(api_key=api_key)
+groq_api_key = os.getenv("GROQ_API_KEY")
+groq_client = None
+if groq_api_key:
+    groq_client = Groq(api_key=groq_api_key)
 
+# ---------------------------------------------------------------------------
+# PROMPT CACHE — same prompt = zero API calls
+# ---------------------------------------------------------------------------
+_prompt_cache: dict[str, str] = {}
+
+def cache_key(prompt: str) -> str:
+    return hashlib.md5(prompt.encode()).hexdigest()
+
+def get_cached(prompt: str) -> str | None:
+    return _prompt_cache.get(cache_key(prompt))
+
+def set_cached(prompt: str, response_text: str) -> None:
+    _prompt_cache[cache_key(prompt)] = response_text
+
+# ---------------------------------------------------------------------------
+# RATE LIMITER — 2.5 seconds between calls (~24 RPM, safe under Groq's 30 RPM)
+# ---------------------------------------------------------------------------
+_last_call_time: float = 0.0
+_MIN_INTERVAL: float = 2.5  # 2.5 seconds between Groq calls
+
+async def wait_for_rate_limit() -> None:
+    global _last_call_time
+    now = time.time()
+    elapsed = now - _last_call_time
+    if elapsed < _MIN_INTERVAL:
+        wait_secs = _MIN_INTERVAL - elapsed
+        print(f"⏳ Rate limiter: waiting {wait_secs:.1f}s before next call")
+        await asyncio.sleep(wait_secs)
+    _last_call_time = time.time()
+
+# ---------------------------------------------------------------------------
+# DATA MODELS
+# ---------------------------------------------------------------------------
 class QueryRequest(BaseModel):
     query: str
     history: Optional[List[dict]] = []
 
-global_file_path = None
-global_columns = []
-global_data_summary = ""
+global_file_path: str | None = None
+global_columns: list[str] = []
+global_data_summary: str = ""
 
 def load_df(file_path: str) -> pd.DataFrame:
-    """Load CSV with auto-delimiter detection."""
-    for sep in [',', ';', '\t', '|']:
-        try:
-            _df = pd.read_csv(file_path, sep=sep, nrows=5)
-            if len(_df.columns) > 1:
-                df = pd.read_csv(file_path, sep=sep)
-                df.columns = [str(c).strip() for c in df.columns]
-                return df
-        except Exception:
-            continue
-    # fallback
-    df = pd.read_csv(file_path)
-    df.columns = [str(c).strip() for c in df.columns]
-    return df
+    """Robust load for CSV/Text including those with binary junk headers."""
+    import io
+    try:
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
+        
+        # Try different encodings
+        decoded = None
+        for enc in ['utf-8-sig', 'latin-1', 'cp1252', 'iso-8859-1']:
+            try:
+                decoded = file_bytes.decode(enc)
+                break
+            except:
+                continue
+        
+        if decoded is None:
+            decoded = file_bytes.decode('latin-1', errors='replace')
+
+        # Find where actual CSV data starts (skip bplist and other binary junk)
+        lines = decoded.split('\n')
+        start_line = 0
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            # A valid header usually has at least one comma/delimiter and isn't binary
+            if (
+                (',' in stripped or ';' in stripped or '\t' in stripped)
+                and len(stripped) < 1000
+                and stripped.count('\x00') == 0
+                and not stripped.startswith('bplist')
+                and i < 50 # Don't search forever
+            ):
+                start_line = i
+                break
+        
+        clean_content = '\n'.join(lines[start_line:])
+        
+        # Auto-detect delimiter
+        for sep in [',', ';', '\t', '|']:
+            try:
+                df = pd.read_csv(io.StringIO(clean_content), sep=sep, engine='python', on_bad_lines='skip', nrows=5)
+                if len(df.columns) >= 2:
+                    # Reload full with this sep
+                    df = pd.read_csv(io.StringIO(clean_content), sep=sep, engine='python', on_bad_lines='skip')
+                    df.columns = [str(c).strip() for c in df.columns]
+                    return df
+            except:
+                continue
+        
+        # Last resort default
+        df = pd.read_csv(io.StringIO(clean_content), on_bad_lines='skip')
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
+    except Exception as e:
+        print(f"❌ Error in load_df: {e}")
+        # Return empty df as fallback
+        return pd.DataFrame()
 
 SAMPLE_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "sample_bmw_data.csv")
 
@@ -63,65 +139,95 @@ def get_sample_csv():
         raise HTTPException(status_code=404, detail="Sample CSV not found.")
     return FileResponse(path, media_type="text/csv", filename="sample_bmw_data.csv")
 
+# ---------------------------------------------------------------------------
+# UPLOAD ENDPOINT — zero Gemini calls, pure data processing
+# ---------------------------------------------------------------------------
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: Optional[UploadFile] = File(None),
+    UPLOAD_SOURCE: Optional[UploadFile] = File(None)
+):
     global global_file_path, global_columns, global_data_summary
+    
+    # Identify which field contains the file (support both 'file' and 'UPLOAD_SOURCE')
+    actual_file = file or UPLOAD_SOURCE
+    
     try:
-        if not file.filename or not file.filename.endswith('.csv'):
-            raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+        if not actual_file:
+            raise HTTPException(status_code=400, detail="No file uploaded. Please use 'file' or 'UPLOAD_SOURCE_FILE' as the file field.")
+        
+        filename = actual_file.filename or "uploaded_data.csv"
+        filename_lower = filename.lower()
+        is_excel = filename_lower.endswith('.xlsx') or filename_lower.endswith('.xls')
         
         os.makedirs("storage", exist_ok=True)
-        file_path = f"storage/{file.filename}"
+        file_path = f"storage/{filename}"
         
-        raw_data = await file.read()
+        raw_data = await actual_file.read()
+        df_full = None
         
-        # Detect binary files (bplist, zip, etc.) — not real CSVs
-        if raw_data[:6] in (b'bplist', b'PK\x03\x04', b'\x89PNG\r') or raw_data[:4] in (b'\x00\x00\x00\x00', b'%PDF'):
-            raise HTTPException(status_code=400, detail="The uploaded file is not a plain text CSV. It appears to be a binary file (e.g., Safari WebKit archive, ZIP, PDF). Please export your data as a plain CSV (.csv) file from Excel, Google Sheets, or a database tool.")
-        
-        try:
-            text_data = raw_data.decode('utf-8')
-        except UnicodeDecodeError:
+        if is_excel:
             try:
-                text_data = raw_data.decode('utf-16')
-            except UnicodeDecodeError:
-                text_data = raw_data.decode('latin1')
-        
-        # Extra guard: check if file starts with binary plist marker
-        if text_data.startswith('bplist') or '\x00' in text_data[:100]:
-            raise HTTPException(status_code=400, detail="The uploaded file appears to be a binary/WebKit archive rather than a plain CSV. Please save the file as a plain CSV and try again.")
+                import io
+                df_full = pd.read_excel(io.BytesIO(raw_data))
+                # Save as CSV for consistency in downstream steps
+                csv_path = file_path.rsplit('.', 1)[0] + ".csv"
+                df_full.to_csv(csv_path, index=False)
+                file_path = csv_path
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
+        else:
+            # Fallback for CSV/Text
+            text_data = None
+            # Extended list of encodings to try
+            encodings = ['utf-8-sig', 'utf-16', 'utf-8', 'latin1', 'cp1252', 'ascii', 'iso-8859-1']
+            for enc in encodings:
+                try:
+                    text_data = raw_data.decode(enc)
+                    break
+                except Exception:
+                    continue
+            
+            if text_data is None:
+                # Last resort: decode as latin1 with replacement to avoid hard failure
+                text_data = raw_data.decode('latin1', errors='replace')
 
-                
-        with open(file_path, "w", encoding="utf-8", newline="") as buffer:
-            buffer.write(text_data)
+            with open(file_path, "w", encoding="utf-8", newline="") as buffer:
+                buffer.write(text_data)
             
+            df_full = load_df(file_path)
+
+        if df_full is None or (df_full.empty and len(df_full.columns) == 0):
+            raise ValueError("The uploaded file is empty or incorrectly formatted.")
+            
+        # Add UPLOAD_SOURCE tracking column
+        src_val = filename
+        if 'UPLOAD_SOURCE' not in [str(c).upper() for c in df_full.columns]:
+            df_full['UPLOAD_SOURCE'] = src_val
+            # Update the saved file with the new column
+            df_full.to_csv(file_path, index=False)
+
         global_file_path = file_path
-        
-        df_full = load_df(file_path)
-            
-        if df_full.empty and len(df_full.columns) == 0:
-            raise ValueError("The uploaded CSV is empty or incorrectly formatted.")
-        
-        global_columns = list(df_full.columns)
-        
-        # Detect column types
+        global_columns = [str(c).strip() for c in df_full.columns]
         numeric_cols = df_full.select_dtypes(include='number').columns.tolist()
         cat_cols = [c for c in df_full.columns if c not in numeric_cols]
         
-        # Build data summary
         try:
-            sample_desc = df_full.head(5).to_string()
+            sample_desc = df_full.head(15).to_string()
             stats_desc = df_full.describe(include='all').to_string()
-            global_data_summary = f"Columns: {list(df_full.columns)}\n\nFirst 5 Rows:\n{sample_desc}\n\nStatistics Summary:\n{stats_desc}"
-            if len(global_data_summary) > 8000:
-                global_data_summary = global_data_summary[:8000] + "\n...(truncated)"
+            global_data_summary = f"Columns: {global_columns}\n\nFirst 15 Rows:\n{sample_desc}\n\nStatistics Summary:\n{stats_desc}"
+            if len(global_data_summary) > 10000:
+                global_data_summary = global_data_summary[:10000] + "\n...(truncated)"
         except Exception:
             global_data_summary = "Data summary not available."
         
+        # Clear cache for the new dataset
+        _prompt_cache.clear()
         row_count = len(df_full)
+        print(f"✅ Upload: {filename} — {row_count} rows. UPLOAD_SOURCE column verified. Cache cleared.")
         
         return {
-            "filename": file.filename,
+            "filename": filename,
             "rows": row_count,
             "columns": len(global_columns),
             "headers": global_columns,
@@ -135,15 +241,76 @@ async def upload_file(file: UploadFile = File(...)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+# ---------------------------------------------------------------------------
+# GROQ CALL — cache → rate limit → exponential backoff retry
+# ---------------------------------------------------------------------------
+async def call_llm(prompt: str) -> str:
+    """Single Groq call with cache, rate limit, and retry."""
+    
+    # 1. Check cache — zero cost
+    cached = get_cached(prompt)
+    if cached:
+        print("✅ Cache HIT — skipping API call entirely")
+        return cached
+
+    if not groq_client:
+        raise ValueError("Groq API Key is not configured. Set GROQ_API_KEY in backend/.env")
+
+    # 2. Rate limit — enforce minimum spacing
+    await wait_for_rate_limit()
+
+    # 3. Retry with exponential backoff
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"🔄 Calling Groq (attempt {attempt + 1}/{max_retries})")
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a SQL expert. Return ONLY valid JSON, no markdown code fences, no extra text."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.1,
+                max_completion_tokens=2048,
+            )
+            text = response.choices[0].message.content
+            print(f"✅ Groq responded successfully")
+            
+            # Cache the result for future identical queries
+            set_cached(prompt, text)
+            return text
+
+        except Exception as err:
+            err_s = str(err)
+            print(f"❌ Groq error (attempt {attempt + 1}): {err_s[:150]}")
+            
+            if "429" in err_s or "rate_limit" in err_s.lower():
+                wait = (attempt + 1) * 10
+                print(f"⏳ Rate limit hit. Waiting {wait}s...")
+                await asyncio.sleep(wait)
+                continue
+            else:
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(3)
+
+    raise Exception("All Groq retry attempts failed.")
+
+# ---------------------------------------------------------------------------
+# QUERY ENDPOINT — 1 Gemini call per user query
+# ---------------------------------------------------------------------------
 @app.post("/api/query")
 async def query_data(request: QueryRequest):
     global global_file_path, global_columns, global_data_summary
     
     if not global_file_path or not os.path.exists(global_file_path):
         raise HTTPException(status_code=400, detail="Please upload a dataset first.")
-    
-    # Build column reference string with quoted names
-    col_list = ', '.join([f'"{c}"' for c in global_columns])
     
     prompt = f"""### ROLE
 You are a SQLite3 SQL expert for a Conversational BI Dashboard.
@@ -197,43 +364,7 @@ Columns: {global_columns}
 """
     
     try:
-        if not genai_client:
-            raise ValueError("Gemini API Key is not configured.")
-        
-        # Try models in order — fall back if one hits rate limits
-        models_to_try = ["gemini-1.5-flash"]
-        response = None
-        last_error = None
-        
-        for model_name in models_to_try:
-            for attempt in range(3):  # up to 3 retries per model
-                try:
-                    response = genai_client.models.generate_content(
-                        model=model_name,
-                        contents=prompt
-                    )
-                    print(f"Success with model: {model_name}")
-                    break  # success — exit retry loop
-                except Exception as model_err:
-                    err_s = str(model_err)
-                    last_error = model_err
-                    if "429" in err_s or "RESOURCE_EXHAUSTED" in err_s:
-                        # Extract retry delay
-                        m = re.search(r'retryDelay.*?(\d+)s', err_s)
-                        wait = int(m.group(1)) if m else 5
-                        wait = min(wait, 15)  # cap at 15s wait
-                        print(f"Rate limit on {model_name} attempt {attempt+1}, waiting {wait}s...")
-                        import time; time.sleep(wait)
-                        continue
-                    else:
-                        raise model_err  # non-rate-limit error — don't retry
-            if response:
-                break  # got a response — skip remaining models
-        
-        if not response:
-            raise last_error  # all models exhausted
-        
-        text = response.text
+        text = await call_llm(prompt)
         
         # Strip markdown fences if present
         if "```json" in text:
@@ -242,8 +373,52 @@ Columns: {global_columns}
             json_str = text.split("```")[1].split("```")[0].strip()
         else:
             json_str = text.strip()
-            
-        parsed = json.loads(json_str)
+
+        def clean_json(t: str):
+            t = t.strip()
+            # Remove markdown code blocks if any
+            if "```" in t:
+                import re
+                p = r'```(?:json)?\s*([\s\S]*?)```'
+                ms = re.findall(p, t)
+                if ms: t = ms[0].strip()
+
+            # Extract only the JSON object part
+            start = t.find('{')
+            end = t.rfind('}')
+            if start != -1 and end != -1:
+                t = t[start:end+1]
+
+            # Fix unescaped backslashes
+            import re
+            t = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', t)
+
+            # Replace special unicode characters
+            t = t.replace('\u2013', '-').replace('\u2014', '-')
+            t = t.replace('\u2018', "'").replace('\u2019', "'")
+            t = t.replace('\u201c', '"').replace('\u201d', '"')
+
+            # Remove control characters
+            t = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', t)
+
+            try:
+                return json.loads(t)
+            except json.JSONDecodeError as de:
+                # If still fails, try to fix truncated JSON
+                try:
+                    open_braces = t.count('{') - t.count('}')
+                    open_brackets = t.count('[') - t.count(']')
+                    t += ']' * open_brackets + '}' * open_braces
+                    return json.loads(t)
+                except:
+                    raise de
+
+        try:
+            parsed = clean_json(json_str)
+        except Exception as parse_err:
+            print(f"❌ JSON Parse Error: {parse_err}")
+            print(f"RAW TEXT: {json_str[:500]}...")
+            raise HTTPException(status_code=500, detail=f"Invalid JSON format from AI: {str(parse_err)}")
         
         if not parsed.get("sql"):
             return {
@@ -253,7 +428,6 @@ Columns: {global_columns}
             
         sql = parsed["sql"]
         
-        # Load with auto-delimiter
         conn = sqlite3.connect(':memory:')
         df = load_df(global_file_path)
         df.to_sql('data', conn, index=False)
@@ -261,7 +435,6 @@ Columns: {global_columns}
         results_df = pd.read_sql_query(sql, conn)
         conn.close()
         
-        # Serialize datetime columns safely
         for col in results_df.select_dtypes(include=['datetime64', 'datetime', 'datetimetz']).columns:
             results_df[col] = results_df[col].astype(str)
             
@@ -290,20 +463,17 @@ Columns: {global_columns}
         
     except Exception as e:
         err_str = str(e)
-        print("Error:", err_str)
+        print(f"❌ Query error: {err_str[:200]}")
         
-        # Parse rate-limit errors cleanly
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-            m = re.search(r'retryDelay.*?(\d+)s', err_str)
-            retry_secs = m.group(1) if m else "60"
+        if "429" in err_str or "rate_limit" in err_str.lower():
             return {
                 "type": "error",
-                "summary": f"⏳ All Gemini models hit their rate limit. The free tier allows limited daily requests.\n\nOptions:\n• Wait {retry_secs}s and try again (quota resets at midnight IST)\n• Get a new API key at https://aistudio.google.com\n• Add GEMINI_API_KEY in backend/.env and restart the server"
+                "summary": "⏳ Rate limit reached. Please wait 15–30 seconds and try again. Repeated queries are cached and won't count against your quota."
             }
         
         return {
             "type": "error",
-            "summary": f"❌ Error analyzing data: {err_str[:200]}"
+            "summary": f"❌ Error: {err_str[:200]}"
         }
 
 if __name__ == "__main__":
