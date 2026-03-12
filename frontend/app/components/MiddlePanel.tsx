@@ -2,7 +2,7 @@
 import React from "react";
 import {
   BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter,
-  ResponsiveContainer, Tooltip,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 const tooltipStyle = {
@@ -274,7 +274,9 @@ export default function MiddlePanel() {
           <MonoLabel style={{ marginBottom: 12, flexShrink: 0 }}>ENTROPY SCATTER</MonoLabel>
           <div style={{ flex: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart>
+              <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <XAxis type="number" dataKey="x" hide />
+                <YAxis type="number" dataKey="y" hide />
                 <Scatter data={scatterData} shape={<CustomScatterDot />} />
               </ScatterChart>
             </ResponsiveContainer>

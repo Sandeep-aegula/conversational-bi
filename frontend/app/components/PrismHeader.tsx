@@ -22,9 +22,7 @@ export default function PrismHeader() {
           fontFamily: "var(--font-orbitron)",
           fontWeight: 900,
           fontSize: 20,
-          color: "#fff",
-          letterSpacing: 3,
-        }}>PRISM Analytics </span>
+        }}>PRISM Analytics</span>
       </div>
 
       {/* Nav */}

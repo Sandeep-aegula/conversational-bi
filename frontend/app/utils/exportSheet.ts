@@ -20,46 +20,28 @@ export async function exportSheetAsPDF(sheetId: string, sheetName: string) {
 
   const canvas = await html2canvas(element, CANVAS_OPTIONS)
   const imgData = canvas.toDataURL('image/png')
+  
+  const w = canvas.width / 2;
+  const h = canvas.height / 2;
 
   const pdf = new jsPDF({
-    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+    orientation: w > h ? 'landscape' : 'portrait',
     unit: 'px',
-    format: [canvas.width / 2, canvas.height / 2],
+    format: [w, h],
   })
 
-  // Header stripe
-  pdf.setFillColor(124, 58, 237)
-  pdf.rect(0, 0, canvas.width / 2, 24, 'F')
-
-  // Sheet name in header
-  pdf.setFontSize(9)
-  pdf.setTextColor(255, 255, 255)
-  pdf.text(
-    `PRISM  ·  ${sheetName}  ·  ${getTimestamp()}`,
-    12, 15
-  )
-
-  // Chart image
-  pdf.addImage(imgData, 'PNG', 0, 24, canvas.width / 2, canvas.height / 2)
-
+  // Full-bleed add image (no header stripe to avoid white gaps)
+  pdf.addImage(imgData, 'PNG', 0, 0, w, h)
   pdf.save(`PRISM_${sanitizeFilename(sheetName)}_${getTimestamp()}.pdf`)
 }
 
 
 // ── MULTIPLE SHEETS → ONE PDF (multi-page) ─────────────
 export async function exportMultipleSheetsPDF(sheetsToExport: any[], onProgress?: (p: number) => void) {
-  const pdf = new jsPDF({
-    orientation: 'landscape',
-    unit: 'px',
-    format: 'a4',
-  })
-
-  const pageW = pdf.internal.pageSize.getWidth()
-  const pageH = pdf.internal.pageSize.getHeight()
+  let pdf: any = null;
 
   for (let i = 0; i < sheetsToExport.length; i++) {
     const sheet = sheetsToExport[i]
-    // Use the ID pattern used in Dashboard.tsx
     const element = document.getElementById(`sheet-content-${sheet.id}`)
 
     if (!element) {
@@ -67,47 +49,34 @@ export async function exportMultipleSheetsPDF(sheetsToExport: any[], onProgress?
       continue
     }
 
-    if (i > 0) pdf.addPage()
-
-    // Header stripe per page
-    pdf.setFillColor(124, 58, 237)
-    pdf.rect(0, 0, pageW, 28, 'F')
-
-    pdf.setFontSize(9)
-    pdf.setTextColor(255, 255, 255)
-    pdf.text(
-      `PRISM  ·  ${sheet.name}  ·  Page ${i + 1} of ${sheetsToExport.length}  ·  ${getTimestamp()}`,
-      12, 17
-    )
-
-    // Capture chart area
-    const canvas = await html2canvas(element, {
-      ...CANVAS_OPTIONS,
-      scale: 1.5,
-    })
+    const canvas = await html2canvas(element, { ...CANVAS_OPTIONS, scale: 2 })
     const imgData = canvas.toDataURL('image/png')
+    const w = canvas.width / 2;
+    const h = canvas.height / 2;
 
-    // Scale to fit page
-    const ratio = Math.min(
-      pageW / canvas.width,
-      (pageH - 32) / canvas.height
-    )
-    const imgW = canvas.width * ratio
-    const imgH = canvas.height * ratio
-    const x = (pageW - imgW) / 2
+    if (!pdf) {
+      pdf = new jsPDF({
+        orientation: w > h ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [w, h],
+      })
+    } else {
+      pdf.addPage([w, h], w > h ? 'landscape' : 'portrait')
+    }
 
-    pdf.addImage(imgData, 'PNG', x, 32, imgW, imgH)
+    // Full-bleed image for the specific sheet size
+    pdf.addImage(imgData, 'PNG', 0, 0, w, h)
 
-    // Progress callback
     if (onProgress) {
       onProgress(Math.round(((i + 1) / sheetsToExport.length) * 100))
     }
 
-    // Small delay so browser doesn't freeze
-    await delay(300)
+    await delay(200)
   }
 
-  pdf.save(`PRISM_Export_${sheetsToExport.length}sheets_${getTimestamp()}.pdf`)
+  if (pdf) {
+    pdf.save(`PRISM_Full_Export_${getTimestamp()}.pdf`)
+  }
 }
 
 

@@ -13,6 +13,7 @@ import MiddlePanel from "./MiddlePanel";
 import RightPanel from "./RightPanel";
 import SheetTabBar from "./SheetTabBar";
 import useSheets from "../hooks/useSheets";
+import ExportDropdown from "./ExportDropdown";
 import { CoreVolatility, SegmentIndex, LatencyBuffer, YieldFactor } from "./MiddlePanel";
 
 // Direct backend URL — avoids proxy issues with multipart uploads
@@ -162,7 +163,6 @@ export default function Dashboard() {
   const [uploadError, setUploadError] = useState("");
   const [selectedCol, setSelectedCol] = useState<string | null>(null);
   const [showDataView, setShowDataView] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chartsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -281,64 +281,17 @@ Return them as a JSON object with a 'charts' array. Each chart must have a uniqu
     setShowDataView(false);
   }, []);
 
-  // Export all charts to PDF
-  const handleExportPDF = useCallback(async () => {
-    if (!chartsContainerRef.current || activeSheet.charts.length === 0) return;
-
-    setIsExporting(true);
+  // Placeholder for SheetTabBar context menu export
+  const handleSheetExport = useCallback(async (sheetId: string) => {
+    const sheet = sheets.find(s => s.id === sheetId);
+    if (!sheet) return;
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const jsPDF = (await import("jspdf")).default;
-
-      const pdf = new jsPDF("landscape", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      // Add title page
-      pdf.setFillColor(10, 10, 15);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
-      pdf.setTextColor(124, 58, 237);
-      pdf.setFontSize(32);
-      pdf.text("PRISM", pageWidth / 2, pageHeight / 2 - 20, { align: "center" });
-      pdf.setTextColor(203, 213, 225);
-      pdf.setFontSize(14);
-      pdf.text("Conversational Data Intelligence Report", pageWidth / 2, pageHeight / 2, { align: "center" });
-      pdf.setTextColor(100, 116, 139);
-      pdf.setFontSize(10);
-      pdf.text(`${fileInfo?.filename || "dataset"} · ${fileInfo?.rows?.toLocaleString() || "—"} records · ${fileInfo?.columns || "—"} columns`, pageWidth / 2, pageHeight / 2 + 15, { align: "center" });
-      pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, pageHeight / 2 + 25, { align: "center" });
-
-      // Capture each chart individually
-      const chartElements = chartsContainerRef.current.querySelectorAll("[data-chart-card]");
-      for (let i = 0; i < chartElements.length; i++) {
-        const el = chartElements[i] as HTMLElement;
-        pdf.addPage();
-        pdf.setFillColor(10, 10, 15);
-        pdf.rect(0, 0, pageWidth, pageHeight, "F");
-
-        const canvas = await html2canvas(el, {
-          backgroundColor: "#111118",
-          scale: 2,
-          useCORS: true,
-          logging: false,
-        });
-
-        const imgData = canvas.toDataURL("image/png");
-        const imgWidth = pageWidth - 20;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const yOffset = Math.max(10, (pageHeight - imgHeight) / 2);
-
-        pdf.addImage(imgData, "PNG", 10, yOffset, imgWidth, Math.min(imgHeight, pageHeight - 20));
-      }
-
-      pdf.save(`PRISM_Report_${fileInfo?.filename?.replace(".csv", "") || "data"}_${Date.now()}.pdf`);
+      const { exportSheetAsPDF } = await import("../utils/exportSheet");
+      await exportSheetAsPDF(sheet.id, sheet.name);
     } catch (err) {
-      console.error("PDF Export error:", err);
-      alert("Failed to export PDF. Please try again.");
-    } finally {
-      setIsExporting(false);
+      console.error("Export failed:", err);
     }
-  }, [activeSheet.charts, fileInfo]);
+  }, [sheets]);
 
   const handleChat = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -425,32 +378,13 @@ Return them as a JSON object with a 'charts' array. Each chart must have a uniqu
                     <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11, color: "#9333EA" }}>ANALYZING...</span>
                   </div>
                 )}
-                {/* Export PDF Button */}
+                {/* Export PDF Button - Left of Neural Core */}
                 {activeSheet.charts.length > 0 && (
-                  <button
-                    onClick={handleExportPDF}
-                    disabled={isExporting}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: isExporting
-                        ? "rgba(124,58,237,0.15)"
-                        : "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(225,29,145,0.15))",
-                      border: "1px solid rgba(124,58,237,0.4)",
-                      borderRadius: 8,
-                      padding: "6px 16px",
-                      fontFamily: "var(--font-share-tech-mono)",
-                      fontSize: 11,
-                      color: isExporting ? "#64748B" : "#E11D91",
-                      cursor: isExporting ? "wait" : "pointer",
-                      letterSpacing: 1,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <span style={{ fontSize: 13 }}>{isExporting ? "⏳" : "📄"}</span>
-                    {isExporting ? "EXPORTING..." : "EXPORT_PDF"}
-                  </button>
+                  <ExportDropdown
+                    sheets={sheets}
+                    activeSheetId={activeSheetId}
+                    activeSheetName={activeSheet?.name || "Sheet 1"}
+                  />
                 )}
               </div>
             </div>
@@ -476,10 +410,13 @@ Return them as a JSON object with a 'charts' array. Each chart must have a uniqu
                   </div>
                 </div>
               ) : (
-                <div style={{
-                  display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
-                  gap: 16, padding: 16,
-                }}>
+                <div
+                  id={`sheet-content-${activeSheetId}`}
+                  style={{
+                    display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+                    gap: 16, padding: 16,
+                    background: "var(--bg-app)", // Ensure background for capture
+                  }}>
                   {isQuerying && (
                     <div style={{
                       background: "var(--bg-card)",
@@ -580,7 +517,7 @@ Return them as a JSON object with a 'charts' array. Each chart must have a uniqu
               onRename={renameSheet}
               onDelete={deleteSheet}
               onDuplicate={duplicateSheet}
-              onExportClick={() => handleExportPDF()}
+              onExportClick={handleSheetExport}
             />
           </div>
         ) : (

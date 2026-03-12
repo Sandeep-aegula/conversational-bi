@@ -219,9 +219,10 @@ export default function RightPanel({
             # {chip.slice(0, 16)}
           </button>
         ))}
-        {!fileInfo && (
-          <>
+        {fileInfo && (
+          <div style={{ display: "flex", gap: 8 }}>
             <button
+              onClick={() => setInput("SCAN_ANOMALY")}
               onMouseEnter={() => setHoverChip(10)}
               onMouseLeave={() => setHoverChip(null)}
               style={{
@@ -237,23 +238,7 @@ export default function RightPanel({
               }}>
               # SCAN_ANOMALY
             </button>
-            <button
-              onMouseEnter={() => setHoverChip(11)}
-              onMouseLeave={() => setHoverChip(null)}
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: `1px solid ${hoverChip === 11 ? "rgba(0,229,255,0.4)" : "rgba(255,255,255,0.12)"}`,
-                borderRadius: 20,
-                padding: "6px 14px",
-                fontFamily: "var(--font-share-tech-mono)",
-                fontSize: 11,
-                color: hoverChip === 11 ? "#00E5FF" : "#94A3B8",
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}>
-              # EXPORT_PDF
-            </button>
-          </>
+          </div>
         )}
       </div>
 
