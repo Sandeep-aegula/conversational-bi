@@ -40,11 +40,11 @@ export default function LeftPanel({
     <div style={{
       width: "22%",
       minWidth: 200,
-      background: "#0D0B14",
+      background: "var(--bg-panel)",
       display: "flex",
       flexDirection: "column",
       overflow: "hidden",
-      borderRight: "1px solid rgba(255,255,255,0.05)",
+      borderRight: "1px solid var(--border-main)",
       flexShrink: 0,
     }}>
       {/* Upload Zone */}
@@ -85,7 +85,7 @@ export default function LeftPanel({
             <div style={{
               fontFamily: "var(--font-share-tech-mono)",
               fontSize: 9,
-              color: "#475569",
+              color: "var(--text-muted)",
               letterSpacing: 1,
               marginBottom: 12,
             }}>{rowCount?.toLocaleString() ?? "—"} ROWS · {colCount ?? "—"} COLS</div>
@@ -141,13 +141,13 @@ export default function LeftPanel({
             onMouseLeave={() => setHoverUpload(false)}
             style={{
               display: "block",
-              background: "rgba(124,58,237,0.08)",
+              background: "var(--input-bg)",
               border: `1.5px dashed ${hoverUpload ? "rgba(225,29,145,0.7)" : "rgba(124,58,237,0.65)"}`,
               borderRadius: 12,
               padding: "32px 20px",
               textAlign: "center",
               cursor: "pointer",
-              boxShadow: hoverUpload ? "0 0 20px rgba(124,58,237,0.3)" : "none",
+              boxShadow: hoverUpload ? "0 0 20px var(--accent-glow)" : "none",
               transition: "all 0.2s",
             }}
           >
@@ -191,7 +191,7 @@ export default function LeftPanel({
       <div style={{
         fontFamily: "var(--font-share-tech-mono)",
         fontSize: 10,
-        color: "#64748B",
+        color: "var(--text-muted)",
         textTransform: "uppercase",
         letterSpacing: 2,
         margin: "20px 16px 8px",
@@ -205,7 +205,7 @@ export default function LeftPanel({
             padding: "24px 16px",
             fontFamily: "var(--font-share-tech-mono)",
             fontSize: 11,
-            color: "#334155",
+            color: "var(--text-muted)",
             letterSpacing: 1,
             textAlign: "center",
           }}>AWAITING_DATA...</div>
@@ -224,10 +224,10 @@ export default function LeftPanel({
                   padding: "0 16px",
                   height: 46,
                   borderLeft: `3px solid ${isSelected ? "#7C3AED" : cfg.border}`,
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  borderBottom: "1px solid var(--border-main)",
                   background: isSelected
                     ? "linear-gradient(90deg, rgba(124,58,237,0.2), transparent)"
-                    : "rgba(255,255,255,0.02)",
+                    : "transparent",
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
@@ -235,7 +235,7 @@ export default function LeftPanel({
                 <span style={{
                   fontFamily: "var(--font-share-tech-mono)",
                   fontSize: 13,
-                  color: "#FFFFFF",
+                  color: "var(--text-primary)",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",

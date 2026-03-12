@@ -27,10 +27,10 @@ export default function RightPanel({
     <div style={{
       width: "26%",
       minWidth: 240,
-      background: "#0D0B14",
+      background: "var(--bg-panel)",
       display: "flex",
       flexDirection: "column",
-      borderLeft: "1px solid rgba(255,255,255,0.05)",
+      borderLeft: "1px solid var(--border-main)",
       flexShrink: 0,
       overflow: "hidden",
     }}>
@@ -42,7 +42,7 @@ export default function RightPanel({
             fontFamily: "var(--font-orbitron)",
             fontWeight: 700,
             fontSize: 14,
-            color: "#fff",
+            color: "var(--text-primary)",
             letterSpacing: 2,
           }}>NEURAL_CORE</span>
           {isQuerying && (
@@ -58,7 +58,7 @@ export default function RightPanel({
         <div style={{
           fontFamily: "var(--font-share-tech-mono)",
           fontSize: 10,
-          color: "#64748B",
+          color: "var(--text-muted)",
           letterSpacing: "1.5px",
           marginTop: 4,
         }}>
@@ -71,6 +71,7 @@ export default function RightPanel({
         flex: 1,
         overflowY: "auto",
         padding: "0 0 8px",
+        background: "var(--bg-panel)",
         display: "flex",
         flexDirection: "column",
         gap: 0,
@@ -83,8 +84,8 @@ export default function RightPanel({
             padding: "32px 20px",
           }}>
             <div style={{
-              background: "#13131A",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-card)",
               borderRadius: 10,
               padding: "14px 16px",
               margin: "0 16px",
@@ -99,7 +100,7 @@ export default function RightPanel({
               <div style={{
                 fontFamily: "var(--font-rajdhani)",
                 fontSize: 14,
-                color: "#CBD5E1",
+                color: "var(--text-primary)",
                 lineHeight: 1.6,
                 fontStyle: "italic",
               }}>
@@ -115,8 +116,8 @@ export default function RightPanel({
               return (
                 <div key={idx} style={{ margin: "0 16px 12px" }}>
                   <div style={{
-                    background: "#13131A",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-card)",
                     borderRadius: 10,
                     padding: "14px 16px",
                   }}>
@@ -130,7 +131,7 @@ export default function RightPanel({
                     <div style={{
                       fontFamily: "var(--font-rajdhani)",
                       fontSize: 14,
-                      color: "#CBD5E1",
+                      color: "var(--text-secondary)",
                       lineHeight: 1.6,
                       whiteSpace: "pre-wrap",
                       wordBreak: "break-word",
@@ -156,10 +157,11 @@ export default function RightPanel({
                     textTransform: "uppercase",
                   }}>USER_ADMIN</div>
                   <div style={{
-                    background: "#3B1FA8",
+                    background: "var(--violet)",
                     borderRadius: "12px 12px 2px 12px",
                     padding: "12px 16px",
                     maxWidth: "85%",
+                    boxShadow: "0 4px 12px var(--accent-glow)",
                   }}>
                     <div style={{
                       fontFamily: "var(--font-rajdhani)",
@@ -177,8 +179,8 @@ export default function RightPanel({
         {isQuerying && (
           <div style={{ margin: "0 16px 12px" }}>
             <div style={{
-              background: "#13131A",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-card)",
               borderRadius: 10,
               padding: "14px 16px",
             }}>
@@ -186,7 +188,7 @@ export default function RightPanel({
               <div style={{
                 fontFamily: "var(--font-rajdhani)",
                 fontSize: 13,
-                color: "#64748B",
+                color: "var(--text-muted)",
                 fontStyle: "italic",
               }}>Initializing neural trajectory...</div>
             </div>
@@ -204,13 +206,13 @@ export default function RightPanel({
             onMouseEnter={() => setHoverChip(i)}
             onMouseLeave={() => setHoverChip(null)}
             style={{
-              background: "rgba(255,255,255,0.05)",
-              border: `1px solid ${hoverChip === i ? "rgba(0,229,255,0.4)" : "rgba(255,255,255,0.12)"}`,
+              background: "var(--input-bg)",
+              border: `1px solid ${hoverChip === i ? "rgba(0,229,255,0.4)" : "var(--border-card)"}`,
               borderRadius: 20,
               padding: "6px 14px",
               fontFamily: "var(--font-share-tech-mono)",
               fontSize: 11,
-              color: hoverChip === i ? "#00E5FF" : "#94A3B8",
+              color: hoverChip === i ? "#00E5FF" : "var(--text-muted)",
               cursor: "pointer",
               transition: "all 0.15s",
             }}>
@@ -265,14 +267,14 @@ export default function RightPanel({
           disabled={!fileInfo || isQuerying}
           style={{
             width: "100%",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderBottom: "2px solid #7C3AED",
+            background: "var(--input-bg)",
+            border: "1px solid var(--border-card)",
+            borderBottom: "2px solid var(--violet)",
             borderRadius: 10,
             padding: "12px 56px 12px 16px",
             fontFamily: "var(--font-share-tech-mono)",
             fontSize: 13,
-            color: "#fff",
+            color: "var(--text-primary)",
             outline: "none",
             boxSizing: "border-box",
           }}

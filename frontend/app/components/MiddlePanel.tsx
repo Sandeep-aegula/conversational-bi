@@ -27,7 +27,7 @@ const assetData = [
   { name: "CRITICAL", value: 75 },
   { name: "STABLE",   value: 25 },
 ];
-const ASSET_COLORS = ["#FF6B2B", "rgba(255,255,255,0.1)"];
+const ASSET_COLORS = ["#FF6B2B", "var(--border-card)"];
 
 const scatterData = [
   { x: 20, y: 80, r: 7, color: "#00E5FF" },
@@ -50,8 +50,8 @@ const regionalData = [
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: "#111118",
-      border: "1px solid rgba(255,255,255,0.07)",
+      background: "var(--bg-card)",
+      border: "1px solid var(--border-card)",
       borderRadius: 14,
       padding: "18px 20px",
       ...style,
@@ -59,7 +59,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
   );
 }
 
-function MonoLabel({ children, color = "#64748B", size = 11, style }: {
+function MonoLabel({ children, color = "var(--text-muted)", size = 11, style }: {
   children: React.ReactNode; color?: string; size?: number; style?: React.CSSProperties;
 }) {
   return (
@@ -74,7 +74,7 @@ function MonoLabel({ children, color = "#64748B", size = 11, style }: {
   );
 }
 
-function KpiValue({ children, color = "#fff", size = 28 }: { children: React.ReactNode; color?: string; size?: number }) {
+function KpiValue({ children, color = "var(--text-primary)", size = 28 }: { children: React.ReactNode; color?: string; size?: number }) {
   return (
     <div style={{
       fontFamily: "var(--font-orbitron)",
@@ -95,7 +95,7 @@ function CoreVolatility() {
         <span style={{ color: "#fff", fontSize: 14 }}>△</span>
       </div>
       <KpiValue>84.2%</KpiValue>
-      <div style={{ height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+      <div style={{ height: 3, background: "var(--border-main)", borderRadius: 2 }}>
         <div style={{ height: "100%", width: "65%", background: "linear-gradient(90deg, #7C3AED, #9333EA)", borderRadius: 2 }} />
       </div>
     </Card>
@@ -108,7 +108,7 @@ function SegmentIndex() {
       <MonoLabel color="#E11D91" size={9}>SEGMENT INDEX</MonoLabel>
       <KpiValue>1,204</KpiValue>
       <div style={{ display: "flex", gap: 4 }}>
-        {["#E11D91", "#FF4D6D", "rgba(255,255,255,0.2)", "rgba(255,255,255,0.2)", "rgba(255,255,255,0.2)"].map((c, i) => (
+        {["#E11D91", "#FF4D6D", "var(--border-main)", "var(--border-main)", "var(--border-main)"].map((c, i) => (
           <div key={i} style={{ width: 8, height: 8, borderRadius: 2, background: c }} />
         ))}
       </div>
@@ -166,7 +166,7 @@ export default function MiddlePanel() {
   return (
     <div style={{
       flex: 1,
-      background: "#0A0A0F",
+      background: "var(--bg-app)",
       display: "flex",
       flexDirection: "column",
       gap: 16,
@@ -187,7 +187,7 @@ export default function MiddlePanel() {
         {/* Temporal Flux */}
         <Card style={{ flex: "0 0 60%", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexShrink: 0 }}>
-            <MonoLabel color="#fff" size={13} style={{ letterSpacing: 1 }}>TEMPORAL_FLUX_ANALYSIS</MonoLabel>
+            <MonoLabel color="var(--text-primary)" size={13} style={{ letterSpacing: 1 }}>TEMPORAL_FLUX_ANALYSIS</MonoLabel>
             <div style={{ display: "flex", gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#7C3AED" }} />
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#00E5FF" }} />
@@ -202,7 +202,7 @@ export default function MiddlePanel() {
                 />
                 <Bar dataKey="v" radius={[4, 4, 0, 0]}>
                   {temporalData.map((_, i) => (
-                    <Cell key={i} fill={TEMPORAL_COLORS[i % TEMPORAL_COLORS.length]} />
+                    <Cell key={i} fill={TEMPORAL_COLORS[i % TEMPORAL_COLORS.length]} fillOpacity={0.8} />
                   ))}
                 </Bar>
               </BarChart>
@@ -236,12 +236,12 @@ export default function MiddlePanel() {
               transform: "translate(-50%, -55%)",
               textAlign: "center",
             }}>
-              <div style={{ fontFamily: "var(--font-orbitron)", fontWeight: 900, fontSize: 30, color: "#fff" }}>64</div>
-              <MonoLabel color="#64748B" size={10} style={{ letterSpacing: 2 }}>NODES</MonoLabel>
+              <div style={{ fontFamily: "var(--font-orbitron)", fontWeight: 900, fontSize: 30, color: "var(--text-primary)" }}>64</div>
+              <MonoLabel color="var(--text-muted)" size={10} style={{ letterSpacing: 2 }}>NODES</MonoLabel>
             </div>
           </div>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8, flexShrink: 0 }}>
-            {[{ label: "CRITICAL", color: "#FF6B2B" }, { label: "STABLE", color: "#64748B" }].map(({ label, color }) => (
+            {[{ label: "CRITICAL", color: "#FF6B2B" }, { label: "STABLE", color: "var(--text-muted)" }].map(({ label, color }) => (
               <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div style={{ width: 8, height: 8, background: color, borderRadius: 1 }} />
                 <MonoLabel color={color} size={10}>{label}</MonoLabel>
@@ -259,10 +259,10 @@ export default function MiddlePanel() {
           {regionalData.map(({ city, pct, grad }) => (
             <div key={city} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "#fff" }}>{city}</span>
-                <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "#fff" }}>{pct}%</span>
+                <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-primary)" }}>{city}</span>
+                <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-primary)" }}>{pct}%</span>
               </div>
-              <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2 }}>
+              <div style={{ height: 4, background: "var(--border-main)", borderRadius: 2 }}>
                 <div style={{ width: `${pct}%`, height: "100%", background: grad, borderRadius: 2, transition: "width 1s ease" }} />
               </div>
             </div>

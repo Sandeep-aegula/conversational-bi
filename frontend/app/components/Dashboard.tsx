@@ -41,18 +41,18 @@ function guessType(col: string, numericCols: string[], catCols: string[]): ColTy
 }
 
 const tooltipStyle = {
-  background: "rgba(5,5,7,0.97)",
-  border: "1px solid rgba(124,58,237,0.6)",
+  background: "var(--bg-card)",
+  border: "1px solid var(--violet)",
   borderRadius: 8,
   fontFamily: "var(--font-share-tech-mono)",
   fontSize: 12,
-  color: "#CBD5E1",
+  color: "var(--text-secondary)",
 };
 
 function renderChart(chart: any) {
   const { type, data, xAxisKey, yAxisKeys = [], nameKey, valueKey } = chart;
   if (!data || data.length === 0) return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "#334155", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", gap: 8 }}>
       <span style={{ fontSize: 28 }}>📭</span>
       <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11 }}>NO_DATA_RETURNED</span>
     </div>
@@ -63,7 +63,7 @@ function renderChart(chart: any) {
   const xKey = xAxisKey || allKeys[0] || "label";
   const yKeys: string[] = yAxisKeys.length > 0 ? yAxisKeys : allKeys.filter((k: string) => k !== xKey && typeof data[0][k] === "number");
   const needsRotation = data.length > 6 || data.some((d: any) => String(d[xKey]).length > 8);
-  const axisStyle = { stroke: "#334155", fontSize: 10, tickLine: false as const, axisLine: false as const };
+  const axisStyle = { stroke: "var(--border-card)", fontSize: 10, tickLine: false as const, axisLine: false as const };
 
   if (type === "pie") {
     const pieKey = valueKey || yAxisKeys[0] || Object.keys(data[0]).find((k: string) => typeof data[0][k] === "number") || Object.keys(data[0])[1];
@@ -92,9 +92,9 @@ function renderChart(chart: any) {
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "#475569" }} />
-          <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "#475569" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-main)" vertical={false} />
+          <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
+          <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
           <RechartsTooltip contentStyle={tooltipStyle} />
           {yKeys.map((key: string, i: number) => (
             <Area key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} fill={`url(#ag-${i})`} strokeWidth={2} />
@@ -108,9 +108,9 @@ function renderChart(chart: any) {
     return (
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 10, right: 16, left: -10, bottom: needsRotation ? 50 : 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "#475569" }} />
-          <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "#475569" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-main)" vertical={false} />
+          <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
+          <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
           <RechartsTooltip contentStyle={tooltipStyle} />
           {yKeys.map((key: string, i: number) => (
             <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={data.length < 20} />
@@ -124,10 +124,10 @@ function renderChart(chart: any) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 10, right: 16, left: -10, bottom: needsRotation ? 55 : 10 }} barCategoryGap="30%">
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-        <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "##475569" }} tickFormatter={(v: string) => String(v).slice(0, 14)} />
-        <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "#475569" }} />
-        <RechartsTooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-main)" vertical={false} />
+        <XAxis dataKey={xKey} {...axisStyle} angle={needsRotation ? -35 : 0} textAnchor={needsRotation ? "end" : "middle"} interval={0} tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickFormatter={(v: string) => String(v).slice(0, 14)} />
+        <YAxis {...axisStyle} tickFormatter={fmt} tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
+        <RechartsTooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--input-bg)" }} />
         {yKeys.map((key: string, i: number) => (
           <Bar key={key} dataKey={key} radius={[4, 4, 0, 0]}>
             {data.map((_: any, idx: number) => <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} fillOpacity={0.85} />)}
@@ -340,7 +340,7 @@ export default function Dashboard() {
       display: "flex",
       flexDirection: "column",
       height: "100vh",
-      background: "#0A0A0F",
+      background: "var(--bg-app)",
       overflow: "hidden",
     }}>
       <PrismHeader />
@@ -364,7 +364,7 @@ export default function Dashboard() {
         {showDataView && fileInfo ? (
           <div style={{
             flex: 1,
-            background: "#0A0A0F",
+            background: "var(--bg-app)",
             display: "flex",
             flexDirection: "column",
             overflowY: "auto",
@@ -375,10 +375,10 @@ export default function Dashboard() {
             {/* Data header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
               <div>
-                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 14, color: "#fff", letterSpacing: 1 }}>
+                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 14, color: "var(--text-primary)", letterSpacing: 1 }}>
                   VISUALIZATION_BOARD
                 </div>
-                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 10, color: "#64748B", letterSpacing: 1, marginTop: 4 }}>
+                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 10, color: "var(--text-muted)", letterSpacing: 1, marginTop: 4 }}>
                   {fileInfo.filename} · {fileInfo.rows.toLocaleString()} RECORDS · {fileInfo.columns} COLUMNS
                 </div>
               </div>
@@ -430,7 +430,7 @@ export default function Dashboard() {
                     padding: "6px 14px",
                     fontFamily: "var(--font-share-tech-mono)",
                     fontSize: 11,
-                    color: "#64748B",
+                    color: "var(--text-muted)",
                     cursor: "pointer",
                   }}>← PRISM_VIEW</button>
               </div>
@@ -440,35 +440,35 @@ export default function Dashboard() {
             {charts.length === 0 && !isQuerying ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 12 }}>
                 <div style={{ fontSize: 40, color: "#7C3AED" }}>◈</div>
-                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "#334155", letterSpacing: 2 }}>GENERATING_VISUALIZATIONS...</div>
+                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-muted)", letterSpacing: 2 }}>GENERATING_VISUALIZATIONS...</div>
               </div>
             ) : (
               <div ref={chartsContainerRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 16 }}>
                 {isQuerying && (
                   <div style={{
-                    background: "#111118",
-                    border: "1px solid rgba(124,58,237,0.15)",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-card)",
                     borderRadius: 14, padding: "18px 20px",
                     minHeight: 300,
                     animation: "pulse 2s ease-in-out infinite",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11, color: "#334155", letterSpacing: 2 }}>PROCESSING_QUERY...</span>
+                    <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11, color: "var(--text-muted)", letterSpacing: 2 }}>PROCESSING_QUERY...</span>
                   </div>
                 )}
                 {charts.map(chart => (
                   <div key={chart.id} data-chart-card style={{
-                    background: "#111118",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-card)",
                     borderRadius: 14, padding: "18px 20px",
                     minHeight: 300,
                     display: "flex", flexDirection: "column",
                   }}>
                     <div style={{ marginBottom: 12, flexShrink: 0 }}>
-                      <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "#fff", letterSpacing: 1 }}>
+                      <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-primary)", letterSpacing: 1 }}>
                         {(chart.title || "CHART").toUpperCase()}
                       </div>
-                      <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 10, color: "#64748B", marginTop: 4, letterSpacing: 1 }}>
+                      <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 10, color: "var(--text-muted)", marginTop: 4, letterSpacing: 1 }}>
                         {chart.type?.toUpperCase()} · {chart.data?.length ?? 0} DATA_POINTS
                       </div>
                     </div>

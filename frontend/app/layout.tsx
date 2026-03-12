@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   description: "Cyberpunk-aesthetic conversational BI dashboard powered by AI",
 };
 
+import { ThemeProvider } from "./context/ThemeContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${shareTechMono.variable} ${rajdhani.variable} ${orbitron.variable}`}>
       <body className="antialiased">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

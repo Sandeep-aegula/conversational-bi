@@ -1,7 +1,9 @@
-"use client";
 import React from "react";
+import { useTheme } from "../context/ThemeContext";
 
 export default function PrismHeader() {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <header style={{
       height: 56,
@@ -36,8 +38,6 @@ export default function PrismHeader() {
       }}>
         {[
           { label: "ANALYTICS", active: true }
-          // { label: "DATA_STREAM", active: false },
-          // { label: "ARCHIVE", active: false },
         ].map(({ label, active }) => (
           <span key={label} style={{
             fontFamily: "var(--font-rajdhani)",
@@ -53,21 +53,29 @@ export default function PrismHeader() {
         ))}
       </nav>
 
-      {/* Avatar */}
-      {/* <div style={{ marginLeft: "auto" }}>
-        <div style={{
-          width: 36, height: 36,
-          borderRadius: "50%",
-          background: "#E11D91",
-          border: "2px solid #FF4D6D",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: "var(--font-rajdhani)",
-          fontWeight: 700,
-          fontSize: 13,
-          color: "#fff",
-          cursor: "pointer",
-        }}>JP</div>
-      </div> */}
+      {/* Theme Toggle */}
+      <div style={{ marginLeft: "auto" }}>
+        <button
+          onClick={toggleTheme}
+          style={{
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.3)",
+            borderRadius: 20,
+            padding: "4px 12px",
+            color: "#fff",
+            fontFamily: "var(--font-share-tech-mono)",
+            fontSize: 11,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            transition: "all 0.2s",
+          }}
+        >
+          <span style={{ fontSize: 13 }}>{theme === "dark" ? "🌙" : "☀️"}</span>
+          {theme === "dark" ? "DARK_MODE" : "LIGHT_MODE"}
+        </button>
+      </div>
     </header>
   );
 }
