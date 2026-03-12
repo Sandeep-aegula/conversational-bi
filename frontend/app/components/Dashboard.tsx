@@ -11,6 +11,9 @@ import PrismHeader from "./PrismHeader";
 import LeftPanel from "./LeftPanel";
 import MiddlePanel from "./MiddlePanel";
 import RightPanel from "./RightPanel";
+import SheetTabBar from "./SheetTabBar";
+import useSheets from "../hooks/useSheets";
+import { CoreVolatility, SegmentIndex, LatencyBuffer, YieldFactor } from "./MiddlePanel";
 
 // Direct backend URL — avoids proxy issues with multipart uploads
 const BACKEND = "http://localhost:8000";
@@ -141,7 +144,18 @@ function renderChart(chart: any) {
 export default function Dashboard() {
   const [uploadState, setUploadState] = useState<"idle" | "uploading" | "done">("idle");
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
-  const [charts, setCharts] = useState<any[]>([]);
+  const {
+    sheets,
+    activeSheet,
+    activeSheetId,
+    switchSheet,
+    addSheet,
+    renameSheet,
+    deleteSheet,
+    duplicateSheet,
+    updateSheetCharts,
+    loadInitialCharts,
+  } = useSheets([]);
   const [chatHistory, setChatHistory] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [isQuerying, setIsQuerying] = useState(false);
@@ -153,7 +167,7 @@ export default function Dashboard() {
   const chartsContainerRef = useRef<HTMLDivElement>(null);
 
   const removeChart = (id: number) => {
-    setCharts(prev => prev.filter(c => c.id !== id));
+    updateSheetCharts(activeSheetId, (prev: any[]) => prev.filter(c => c.id !== id));
   };
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
@@ -169,12 +183,12 @@ export default function Dashboard() {
       const result = await res.json();
       if (result.type === "dashboard" && result.charts?.length) {
         const newCharts = result.charts.map((c: any, i: number) => ({ ...c, id: Date.now() + i + Math.random() }));
-        setCharts(prev => [...newCharts, ...prev]);
+        updateSheetCharts(activeSheetId, prev => [...newCharts, ...prev]);
         setChatHistory(prev => [...prev, { type: "ai", text: result.summary || "Charts generated.", charts: newCharts }]);
       } else if (Array.isArray(result) && result.length > 0 && result[0].sql) {
         // Handle case where result is directly a list of chart objects
         const newCharts = result.map((c: any, i: number) => ({ ...c, id: Date.now() + i + Math.random() }));
-        setCharts(prev => [...newCharts, ...prev]);
+        updateSheetCharts(activeSheetId, prev => [...newCharts, ...prev]);
         setChatHistory(prev => [...prev, { type: "ai", text: "Multiple charts generated.", charts: newCharts }]);
       } else {
         setChatHistory(prev => [...prev, { type: "ai", text: result.summary || "Analysis complete." }]);
@@ -184,7 +198,7 @@ export default function Dashboard() {
     } finally {
       setIsQuerying(false);
     }
-  }, []);
+  }, [activeSheetId, updateSheetCharts]);
 
   const handleFile = useCallback(async (file: File) => {
     const filename = file.name.toLowerCase();
@@ -200,7 +214,7 @@ export default function Dashboard() {
     }
     setUploadError("");
     setUploadState("uploading");
-    setCharts([]); setChatHistory([]); setFileInfo(null);
+    loadInitialCharts([]); setChatHistory([]); setFileInfo(null);
 
     const formData = new FormData();
     formData.append("UPLOAD_SOURCE", file);
@@ -235,13 +249,17 @@ export default function Dashboard() {
       const n0 = numCols[0] || allCols[1] || allCols[0] || "col";
 
       // Multi-chart initial analysis with explicit type variety
-      const initialQuery = `Generate 5 diverse visualizations for this data using different chart types (bar, pie, line, area). Include:
-1. Top categories (use Bar Chart)
-2. Value distribution or segments (use Pie Chart)
-3. Trends or counts over time (use Area or Line Chart if date exists, else Bar)
-4. Comparison of numeric metrics (use Bar Chart)
-5. A specialized insight or ranking (use your choice of Pie or Bar).
-Return them as a JSON object with a 'charts' array. Each chart must have a different focus and preferably different types.`;
+      const initialQuery = `Generate 8 diverse and high-impact visualizations for this data using different chart types (bar, pie, line, area).
+The goal is a comprehensive data report. Include:
+1. Executive Summary: Top categories by volume (Bar)
+2. Market Segmentation: Key distributions (Pie)
+3. Longitudinal Trends: Period-over-period patterns (Area/Line)
+4. Numerical Correlations: Relationship between key metrics (Scatter/Line)
+5. Outlier Detection: Ranking of exceptions (Bar)
+6. Cumulative Impact: Total contributions (Area)
+7. Focused Insight: Specific high-relevance ranking (Bar/Pie)
+8. Diversity Check: Another relevant perspective.
+Return them as a JSON object with a 'charts' array. Each chart must have a unique insight focus.`;
 
       setChatHistory([{ type: "ai", text: `✓ Data source loaded: ${file.name} — ${info.rows.toLocaleString()} rows × ${info.columns} columns. Initializing comprehensive analysis...` }]);
       await runQuery(initialQuery, []);
@@ -255,7 +273,7 @@ Return them as a JSON object with a 'charts' array. Each chart must have a diffe
   const handleReset = useCallback(() => {
     setUploadState("idle");
     setFileInfo(null);
-    setCharts([]);
+    loadInitialCharts([]);
     setChatHistory([]);
     setInput("");
     setUploadError("");
@@ -265,7 +283,7 @@ Return them as a JSON object with a 'charts' array. Each chart must have a diffe
 
   // Export all charts to PDF
   const handleExportPDF = useCallback(async () => {
-    if (!chartsContainerRef.current || charts.length === 0) return;
+    if (!chartsContainerRef.current || activeSheet.charts.length === 0) return;
 
     setIsExporting(true);
     try {
@@ -320,7 +338,7 @@ Return them as a JSON object with a 'charts' array. Each chart must have a diffe
     } finally {
       setIsExporting(false);
     }
-  }, [charts, fileInfo]);
+  }, [activeSheet.charts, fileInfo]);
 
   const handleChat = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -408,7 +426,7 @@ Return them as a JSON object with a 'charts' array. Each chart must have a diffe
                   </div>
                 )}
                 {/* Export PDF Button */}
-                {charts.length > 0 && (
+                {activeSheet.charts.length > 0 && (
                   <button
                     onClick={handleExportPDF}
                     disabled={isExporting}
@@ -437,86 +455,133 @@ Return them as a JSON object with a 'charts' array. Each chart must have a diffe
               </div>
             </div>
 
-            {/* Dynamic charts grid */}
-            {charts.length === 0 && !isQuerying ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 12 }}>
-                <div style={{ fontSize: 40, color: "#7C3AED" }}>◈</div>
-                <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-muted)", letterSpacing: 2 }}>GENERATING_VISUALIZATIONS...</div>
-              </div>
-            ) : (
-              <div ref={chartsContainerRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 16 }}>
-                {isQuerying && (
-                  <div style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-card)",
-                    borderRadius: 14, padding: "18px 20px",
-                    minHeight: 300,
-                    animation: "pulse 2s ease-in-out infinite",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11, color: "var(--text-muted)", letterSpacing: 2 }}>PROCESSING_QUERY...</span>
+            {/* KPI Row */}
+            <div style={{ display: "flex", gap: 12, flexShrink: 0, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
+              <CoreVolatility />
+              <SegmentIndex />
+              <LatencyBuffer />
+              <YieldFactor />
+            </div>
+
+            {/* Main Content Area */}
+            <div ref={chartsContainerRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative" }}>
+              {(activeSheet.charts.length === 0 && !isQuerying) ? (
+                <div style={{
+                  height: "100%", display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", color: "var(--text-muted)", gap: 16
+                }}>
+                  <div style={{ fontSize: 48, opacity: 0.2 }}>◈</div>
+                  <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, letterSpacing: 2 }}>
+                    {activeSheet.name.toUpperCase()} IS EMPTY
                   </div>
-                )}
-                {charts.map(chart => (
-                  <div key={chart.id} data-chart-card style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-card)",
-                    borderRadius: 14, padding: "18px 20px",
-                    minHeight: 300,
-                    display: "flex", flexDirection: "column",
-                    position: "relative",
-                  }}>
-                    {/* Delete button */}
-                    <button
-                      onClick={() => removeChart(chart.id)}
+                </div>
+              ) : (
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+                  gap: 16, padding: 16,
+                }}>
+                  {isQuerying && (
+                    <div style={{
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border-card)",
+                      borderRadius: 14, padding: "18px 20px",
+                      minHeight: 300,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      animation: "pulse 2s ease-in-out infinite",
+                    }}>
+                      <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 11, color: "var(--text-muted)", letterSpacing: 2 }}>PROCESSING_QUERY...</span>
+                    </div>
+                  )}
+                  {activeSheet.charts.map(chart => (
+                    <div
+                      key={chart.id}
+                      data-chart-card
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = "var(--coral)";
-                        e.currentTarget.style.color = "#fff";
-                        e.currentTarget.style.borderColor = "var(--coral)";
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.3), 0 0 20px rgba(124,58,237,0.1)";
+                        e.currentTarget.style.borderColor = "var(--violet)";
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = "var(--input-bg)";
-                        e.currentTarget.style.color = "var(--text-muted)";
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
                         e.currentTarget.style.borderColor = "var(--border-card)";
                       }}
                       style={{
-                        position: "absolute",
-                        top: 14,
-                        right: 14,
-                        background: "var(--input-bg)",
+                        background: "var(--bg-card)",
                         border: "1px solid var(--border-card)",
-                        borderRadius: 6,
-                        width: 28,
-                        height: 28,
-                        color: "var(--text-muted)",
-                        fontSize: 16,
+                        borderRadius: 14,
+                        padding: "18px 20px",
+                        minHeight: 300,
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        zIndex: 10,
-                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                      }}
-                      title="Remove Chart"
-                    >
-                      <span style={{ transform: "translateY(-1px)" }}>🗑️</span>
-                    </button>
+                        flexDirection: "column",
+                        position: "relative",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        cursor: "default",
+                      }}>
+                      {/* Delete button */}
+                      <button
+                        onClick={() => removeChart(chart.id)}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = "var(--coral)";
+                          e.currentTarget.style.color = "#fff";
+                          e.currentTarget.style.borderColor = "var(--coral)";
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = "var(--input-bg)";
+                          e.currentTarget.style.color = "var(--text-muted)";
+                          e.currentTarget.style.borderColor = "var(--border-card)";
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: 14,
+                          right: 14,
+                          background: "var(--input-bg)",
+                          border: "1px solid var(--border-card)",
+                          borderRadius: 6,
+                          width: 28,
+                          height: 28,
+                          color: "var(--text-muted)",
+                          fontSize: 16,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          zIndex: 10,
+                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                        }}
+                        title="Remove Chart"
+                      >
+                        <span style={{ transform: "translateY(-1px)" }}>🗑️</span>
+                      </button>
 
-                    <div style={{ marginBottom: 12, flexShrink: 0 }}>
-                      <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-primary)", letterSpacing: 1 }}>
-                        {(chart.title || "CHART").toUpperCase()}
+                      <div style={{ marginBottom: 12, flexShrink: 0 }}>
+                        <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-primary)", letterSpacing: 1 }}>
+                          {(chart.title || "CHART").toUpperCase()}
+                        </div>
+                        <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 10, color: "var(--text-muted)", marginTop: 4, letterSpacing: 1 }}>
+                          {chart.type?.toUpperCase()} · {chart.data?.length ?? 0} DATA_POINTS
+                        </div>
                       </div>
-                      <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 10, color: "var(--text-muted)", marginTop: 4, letterSpacing: 1 }}>
-                        {chart.type?.toUpperCase()} · {chart.data?.length ?? 0} DATA_POINTS
+                      <div style={{ flex: 1, minHeight: 0, height: 260 }}>
+                        {renderChart(chart)}
                       </div>
                     </div>
-                    <div style={{ flex: 1, minHeight: 0, height: 260 }}>
-                      {renderChart(chart)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sheet Tab Bar */}
+            <SheetTabBar
+              sheets={sheets}
+              activeSheetId={activeSheetId}
+              onSwitch={switchSheet}
+              onAdd={addSheet}
+              onRename={renameSheet}
+              onDelete={deleteSheet}
+              onDuplicate={duplicateSheet}
+              onExportClick={() => handleExportPDF()}
+            />
           </div>
         ) : (
           <MiddlePanel />

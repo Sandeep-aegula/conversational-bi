@@ -24,7 +24,7 @@ export default function PrismHeader() {
           fontSize: 20,
           color: "#fff",
           letterSpacing: 3,
-        }}>ConversationBI</span>
+        }}>PRISM Analytics </span>
       </div>
 
       {/* Nav */}
