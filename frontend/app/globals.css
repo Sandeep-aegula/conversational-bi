@@ -27,6 +27,12 @@
   --text-muted: #64748B;
   --input-bg: rgba(255,255,255,0.04);
   --accent-glow: rgba(124,58,237,0.3);
+
+  /* KPI Tints */
+  --tint-violet: #1A1025;
+  --tint-magenta: #1A0E1A;
+  --tint-cyan: #0A1520;
+  --tint-lime: #141A0E;
 }
 
 .light {
@@ -41,6 +47,12 @@
   --text-muted: #64748B;
   --input-bg: rgba(0,0,0,0.03);
   --accent-glow: rgba(124,58,237,0.1);
+
+  /* KPI Tints Light */
+  --tint-violet: #F5F3FF;
+  --tint-magenta: #FDF2F8;
+  --tint-cyan: #ECFEFF;
+  --tint-lime: #F7FEE7;
 }
 
 * {

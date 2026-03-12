@@ -331,6 +331,11 @@ You are a SQLite3 SQL expert for a Conversational BI Dashboard.
 9. For date/time columns, use strftime() if needed.
 10. Use simple joins-free queries — it's a single flat table.
 
+### CHART TYPES
+- Use "bar" for categorical comparisons and rankings.
+- Use "pie" for distributions and proportions.
+- Use "area" or "line" for trends over time/numerical sequences.
+
 ### TEXT OVERVIEW RULE:
 If the user asks for a general overview or summary (not a specific chart), return:
 {{"sql": "", "chart_type": "", "explanation": "Your insight text here.", "xAxisKey": "", "yAxisKeys": []}}
@@ -341,13 +346,28 @@ If the user asks for a general overview or summary (not a specific chart), retur
 - Pie: SELECT "status" AS label, COUNT(*) AS value FROM data GROUP BY "status"
 - Trend: SELECT "year" AS label, SUM("sales") AS total FROM data GROUP BY "year" ORDER BY "year"
 
-### OUTPUT FORMAT (return ONLY valid JSON, no markdown code fences):
+### OUTPUT FORMAT (return ONLY valid JSON):
+{{
+  "explanation": "Summary of insights.",
+  "charts": [
+    {{
+      "sql": "SELECT ... FROM data GROUP BY ...",
+      "chart_type": "bar",
+      "explanation": "Description of this specific chart.",
+      "xAxisKey": "label",
+      "yAxisKeys": ["value"]
+    }},
+    ...
+  ]
+}}
+OR for a single chart:
 {{
   "sql": "SELECT ... FROM data GROUP BY ...",
   "chart_type": "bar",
-  "explanation": "One sentence describing the chart.",
+  "explanation": "...",
   "xAxisKey": "label",
   "yAxisKeys": ["value"]
+}}
 }}
 
 ### SCHEMA
@@ -420,45 +440,65 @@ Columns: {global_columns}
             print(f"RAW TEXT: {json_str[:500]}...")
             raise HTTPException(status_code=500, detail=f"Invalid JSON format from AI: {str(parse_err)}")
         
-        if not parsed.get("sql"):
+        raw_charts = []
+        if "charts" in parsed and isinstance(parsed["charts"], list):
+            raw_charts = parsed["charts"]
+        elif parsed.get("sql"):
+            raw_charts = [parsed]
+        
+        if not raw_charts:
             return {
                 "type": "text",
                 "summary": parsed.get("explanation", "I couldn't generate a query for this request.")
             }
             
-        sql = parsed["sql"]
-        
         conn = sqlite3.connect(':memory:')
         df = load_df(global_file_path)
         df.to_sql('data', conn, index=False)
         
-        results_df = pd.read_sql_query(sql, conn)
+        final_charts = []
+        last_data = []
+
+        for c_info in raw_charts:
+            try:
+                sql = c_info.get("sql")
+                if not sql: continue
+                
+                results_df = pd.read_sql_query(sql, conn)
+                for col in results_df.select_dtypes(include=['datetime64', 'datetime', 'datetimetz']).columns:
+                    results_df[col] = results_df[col].astype(str)
+                
+                data = results_df.to_dict(orient="records")
+                last_data = data
+                
+                chart_type = c_info.get("chart_type", "bar")
+                x_axis = c_info.get("xAxisKey") or (results_df.columns[0] if len(results_df.columns) > 0 else "label")
+                y_axes = c_info.get("yAxisKeys") or [c for c in results_df.columns if c != x_axis]
+                
+                expl = c_info.get("explanation", "Data Visualization")
+                final_charts.append({
+                    "title": expl[:80] + ("..." if len(expl) > 80 else ""),
+                    "type": chart_type,
+                    "xAxisKey": x_axis,
+                    "yAxisKeys": y_axes,
+                    "nameKey": x_axis,
+                    "valueKey": y_axes[0] if y_axes else "value",
+                    "data": data
+                })
+            except Exception as e:
+                print(f"⚠️ Error executing sub-query: {e}")
+                continue
+                
         conn.close()
         
-        for col in results_df.select_dtypes(include=['datetime64', 'datetime', 'datetimetz']).columns:
-            results_df[col] = results_df[col].astype(str)
-            
-        data = results_df.to_dict(orient="records")
-        chart_type = parsed.get("chart_type", "bar")
-        x_axis = parsed.get("xAxisKey") or (results_df.columns[0] if len(results_df.columns) > 0 else "label")
-        y_axes = parsed.get("yAxisKeys") or [c for c in results_df.columns if c != x_axis]
-        
-        explanation = parsed.get("explanation", "Data Visualization")
-        chart_config = {
-            "title": explanation[:80] + ("..." if len(explanation) > 80 else ""),
-            "type": chart_type,
-            "xAxisKey": x_axis,
-            "yAxisKeys": y_axes,
-            "nameKey": x_axis,
-            "valueKey": y_axes[0] if y_axes else "value",
-            "data": data
-        }
-        
+        if not final_charts:
+            return {"type": "text", "summary": "Failed to generate visualizations from the SQL provided."}
+
         return {
             "type": "dashboard",
-            "summary": explanation,
-            "charts": [chart_config],
-            "rawData": data
+            "summary": parsed.get("explanation", "Data Analysis complete."),
+            "charts": final_charts,
+            "rawData": last_data
         }
         
     except Exception as e:

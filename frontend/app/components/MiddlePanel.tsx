@@ -6,12 +6,12 @@ import {
 } from "recharts";
 
 const tooltipStyle = {
-  background: "rgba(5,5,7,0.97)",
-  border: "1px solid rgba(124,58,237,0.6)",
+  background: "var(--bg-card)",
+  border: "1px solid var(--violet)",
   borderRadius: 8,
   fontFamily: "var(--font-share-tech-mono)",
   fontSize: 12,
-  color: "#CBD5E1",
+  color: "var(--text-secondary)",
 };
 
 // Static KPI data
@@ -89,10 +89,10 @@ function KpiValue({ children, color = "var(--text-primary)", size = 28 }: { chil
 // KPI Cards
 function CoreVolatility() {
   return (
-    <Card style={{ background: "#1A1025", borderTop: "2px solid #7C3AED", flex: 1 }}>
+    <Card style={{ background: "var(--tint-violet)", borderTop: "2px solid #7C3AED", flex: 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <MonoLabel color="#7C3AED" size={9}>CORE<br />VOLATILITY</MonoLabel>
-        <span style={{ color: "#fff", fontSize: 14 }}>△</span>
+        <span style={{ color: "var(--text-primary)", fontSize: 14 }}>△</span>
       </div>
       <KpiValue>84.2%</KpiValue>
       <div style={{ height: 3, background: "var(--border-main)", borderRadius: 2 }}>
@@ -104,7 +104,7 @@ function CoreVolatility() {
 
 function SegmentIndex() {
   return (
-    <Card style={{ background: "#1A0E1A", borderTop: "2px solid #E11D91", flex: 1 }}>
+    <Card style={{ background: "var(--tint-magenta)", borderTop: "2px solid #E11D91", flex: 1 }}>
       <MonoLabel color="#E11D91" size={9}>SEGMENT INDEX</MonoLabel>
       <KpiValue>1,204</KpiValue>
       <div style={{ display: "flex", gap: 4 }}>
@@ -118,7 +118,7 @@ function SegmentIndex() {
 
 function LatencyBuffer() {
   return (
-    <Card style={{ background: "#0A1520", borderTop: "2px solid #00E5FF", flex: 1 }}>
+    <Card style={{ background: "var(--tint-cyan)", borderTop: "2px solid #00E5FF", flex: 1 }}>
       <MonoLabel color="#00E5FF" size={9}>LATENCY BUFFER</MonoLabel>
       <KpiValue>12ms</KpiValue>
       <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: 28 }}>
@@ -137,7 +137,7 @@ function LatencyBuffer() {
 
 function YieldFactor() {
   return (
-    <Card style={{ background: "#141A0E", borderTop: "2px solid #A3E635", flex: 1 }}>
+    <Card style={{ background: "var(--tint-lime)", borderTop: "2px solid #A3E635", flex: 1 }}>
       <MonoLabel color="#A3E635" size={9}>YIELD FACTOR</MonoLabel>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "10px 0 8px" }}>
         <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 16, color: "#A3E635" }}>Φ</span>

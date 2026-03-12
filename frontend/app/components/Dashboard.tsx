@@ -152,6 +152,10 @@ export default function Dashboard() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chartsContainerRef = useRef<HTMLDivElement>(null);
 
+  const removeChart = (id: number) => {
+    setCharts(prev => prev.filter(c => c.id !== id));
+  };
+
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
   const runQuery = useCallback(async (query: string, history: any[]) => {
@@ -167,6 +171,11 @@ export default function Dashboard() {
         const newCharts = result.charts.map((c: any, i: number) => ({ ...c, id: Date.now() + i + Math.random() }));
         setCharts(prev => [...newCharts, ...prev]);
         setChatHistory(prev => [...prev, { type: "ai", text: result.summary || "Charts generated.", charts: newCharts }]);
+      } else if (Array.isArray(result) && result.length > 0 && result[0].sql) {
+        // Handle case where result is directly a list of chart objects
+        const newCharts = result.map((c: any, i: number) => ({ ...c, id: Date.now() + i + Math.random() }));
+        setCharts(prev => [...newCharts, ...prev]);
+        setChatHistory(prev => [...prev, { type: "ai", text: "Multiple charts generated.", charts: newCharts }]);
       } else {
         setChatHistory(prev => [...prev, { type: "ai", text: result.summary || "Analysis complete." }]);
       }
@@ -225,12 +234,16 @@ export default function Dashboard() {
       const c0 = catCols[0] || allCols[0] || "col";
       const n0 = numCols[0] || allCols[1] || allCols[0] || "col";
 
-      // Single combined initial query — reduces API calls from 2 to 1
-      const initialQuery = numCols.length > 0 && catCols.length > 0
-        ? `Show a bar chart of the top 15 "${c0}" values ordered by total "${n0}"`
-        : `Show a bar chart of record count grouped by "${allCols[0]}", top 15`;
+      // Multi-chart initial analysis with explicit type variety
+      const initialQuery = `Generate 5 diverse visualizations for this data using different chart types (bar, pie, line, area). Include:
+1. Top categories (use Bar Chart)
+2. Value distribution or segments (use Pie Chart)
+3. Trends or counts over time (use Area or Line Chart if date exists, else Bar)
+4. Comparison of numeric metrics (use Bar Chart)
+5. A specialized insight or ranking (use your choice of Pie or Bar).
+Return them as a JSON object with a 'charts' array. Each chart must have a different focus and preferably different types.`;
 
-      setChatHistory([{ type: "ai", text: `✓ Data source loaded: ${file.name} — ${info.rows.toLocaleString()} rows × ${info.columns} columns. Running initial analysis...` }]);
+      setChatHistory([{ type: "ai", text: `✓ Data source loaded: ${file.name} — ${info.rows.toLocaleString()} rows × ${info.columns} columns. Initializing comprehensive analysis...` }]);
       await runQuery(initialQuery, []);
     } catch (err: any) {
       setUploadError(err.message || "Upload failed.");
@@ -421,18 +434,6 @@ export default function Dashboard() {
                     {isExporting ? "EXPORTING..." : "EXPORT_PDF"}
                   </button>
                 )}
-                <button
-                  onClick={() => setShowDataView(false)}
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 8,
-                    padding: "6px 14px",
-                    fontFamily: "var(--font-share-tech-mono)",
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}>← PRISM_VIEW</button>
               </div>
             </div>
 
@@ -463,7 +464,44 @@ export default function Dashboard() {
                     borderRadius: 14, padding: "18px 20px",
                     minHeight: 300,
                     display: "flex", flexDirection: "column",
+                    position: "relative",
                   }}>
+                    {/* Delete button */}
+                    <button
+                      onClick={() => removeChart(chart.id)}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "var(--coral)";
+                        e.currentTarget.style.color = "#fff";
+                        e.currentTarget.style.borderColor = "var(--coral)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "var(--input-bg)";
+                        e.currentTarget.style.color = "var(--text-muted)";
+                        e.currentTarget.style.borderColor = "var(--border-card)";
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 14,
+                        right: 14,
+                        background: "var(--input-bg)",
+                        border: "1px solid var(--border-card)",
+                        borderRadius: 6,
+                        width: 28,
+                        height: 28,
+                        color: "var(--text-muted)",
+                        fontSize: 16,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        zIndex: 10,
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                      title="Remove Chart"
+                    >
+                      <span style={{ transform: "translateY(-1px)" }}>🗑️</span>
+                    </button>
+
                     <div style={{ marginBottom: 12, flexShrink: 0 }}>
                       <div style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 12, color: "var(--text-primary)", letterSpacing: 1 }}>
                         {(chart.title || "CHART").toUpperCase()}
