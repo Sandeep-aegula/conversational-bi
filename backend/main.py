@@ -269,7 +269,19 @@ async def call_llm(prompt: str) -> str:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a SQL expert. Return ONLY valid JSON, no markdown code fences, no extra text."
+                        "content": (
+                            "You are PRISM, an AI assistant exclusively for Business Intelligence (BI) and data analytics. "
+                            "Your ONLY purpose is to analyze uploaded datasets, generate SQL queries, and produce chart "
+                            "configurations (bar, pie, line, area) for a BI dashboard. "
+                            "You MUST refuse any request that is not directly related to: data visualization, "
+                            "SQL queries, chart generation, dataset analysis, statistical summaries, KPIs, trends, "
+                            "or business metrics from the uploaded data. "
+                            "If a user asks about ANYTHING else (coding help, general knowledge, creative writing, "
+                            "math problems, personal advice, current events, or any non-BI topic), you MUST respond "
+                            "with EXACTLY this JSON and nothing else: "
+                            '{"type": "off_topic", "summary": "⛔ PRISM is a Business Intelligence assistant. I can only analyze your uploaded dataset, generate charts, and answer data-related questions. Please ask something about your data."}'
+                            " Return ONLY valid JSON. No markdown fences. No extra text."
+                        )
                     },
                     {
                         "role": "user",
@@ -303,15 +315,68 @@ async def call_llm(prompt: str) -> str:
     raise Exception("All Groq retry attempts failed.")
 
 # ---------------------------------------------------------------------------
-# QUERY ENDPOINT — 1 Gemini call per user query
+# TOPIC GUARD — fast keyword pre-screen (no API call needed)
+# ---------------------------------------------------------------------------
+_OFF_TOPIC_PATTERNS = [
+    # General AI / chatbot abuse
+    r"\b(who are you|what are you|tell me about yourself|your name|are you (an? )?ai|are you (a )?robot|are you human)\b",
+    # Programming / coding unrelated to SQL/data
+    r"\b(write (a |some )?(python|javascript|java|c\+\+|c#|html|css|rust|go|ruby) (code|program|script|function|class))\b",
+    r"\b(debug|fix (my|this) code|code review|refactor|implement (a |an )?(algorithm|feature|api))\b",
+    # General knowledge
+    r"\b(capital (of|city)|who (invented|discovered|wrote|created|is|was)|when (was|did|is)|where (is|was|did))\b",
+    r"\b(history of|biography|wikipedia|explain (the concept|quantum|relativity|evolution|economics))\b",
+    # Creative / personal
+    r"\b(write (me )?(a |an )?(poem|story|essay|joke|song|letter|email)|tell me a (joke|story)|give me a recipe)\b",
+    r"\b(what should i (eat|do|watch|read|wear)|recommend (a |an )?(movie|book|show|restaurant|game))\b",
+    # Math / science unrelated to data
+    r"\b(solve (this )?(equation|integral|derivative|math problem)|calculate (pi|fibonacci|factorial|prime))\b",
+    r"\b(physics|chemistry|biology|astronomy|medicine|legal advice|financial advice|investment advice)\b",
+    # News / current events
+    r"\b(latest news|current events|what happened (today|yesterday|recently)|stock (price|market) (of|for) \w+)\b",
+    # Social / relationship
+    r"\b(how to make friends|relationship advice|dating tips|personal problems|mental health)\b",
+]
+
+import re as _re
+_OFF_TOPIC_RE = _re.compile(
+    "|".join(_OFF_TOPIC_PATTERNS),
+    _re.IGNORECASE,
+)
+
+OFF_TOPIC_RESPONSE = {
+    "type": "off_topic",
+    "summary": (
+        "⛔ **Out of scope.** PRISM is a Business Intelligence assistant — "
+        "I can only analyze your uploaded dataset, generate charts & SQL queries, "
+        "and answer data-related questions.\n\n"
+        "Try asking things like:\n"
+        "• *'Show me the top 10 categories by revenue'*\n"
+        "• *'Pie chart of sales by region'*\n"
+        "• *'What are the monthly trends?'*"
+    )
+}
+
+def is_off_topic(query: str) -> bool:
+    """Returns True if the query is clearly unrelated to BI / data analysis."""
+    return bool(_OFF_TOPIC_RE.search(query))
+
+
+# ---------------------------------------------------------------------------
+# QUERY ENDPOINT — 1 Groq call per user query
 # ---------------------------------------------------------------------------
 @app.post("/api/query")
 async def query_data(request: QueryRequest):
     global global_file_path, global_columns, global_data_summary
-    
+
     if not global_file_path or not os.path.exists(global_file_path):
         raise HTTPException(status_code=400, detail="Please upload a dataset first.")
-    
+
+    # ── Layer 1: fast keyword pre-screen (zero API cost) ────────────────────
+    if is_off_topic(request.query):
+        print(f"🚫 Off-topic query blocked (pre-screen): {request.query[:80]}")
+        return OFF_TOPIC_RESPONSE
+
     prompt = f"""### ROLE
 You are a SQLite3 SQL expert for a Conversational BI Dashboard.
 
@@ -459,16 +524,31 @@ Columns: {global_columns}
         final_charts = []
         last_data = []
 
+        def sanitize_for_json(obj):
+            """Recursively replace NaN/Inf floats with None so json.dumps never crashes."""
+            import math
+            if isinstance(obj, float):
+                if math.isnan(obj) or math.isinf(obj):
+                    return None
+                return obj
+            if isinstance(obj, dict):
+                return {k: sanitize_for_json(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [sanitize_for_json(item) for item in obj]
+            return obj
+
         for c_info in raw_charts:
             try:
                 sql = c_info.get("sql")
                 if not sql: continue
                 
                 results_df = pd.read_sql_query(sql, conn)
+                # Convert datetimes to strings first
                 for col in results_df.select_dtypes(include=['datetime64', 'datetime', 'datetimetz']).columns:
                     results_df[col] = results_df[col].astype(str)
                 
-                data = results_df.to_dict(orient="records")
+                # Convert to Python dicts, then deep-sanitize NaN/Inf at the Python level
+                data = sanitize_for_json(results_df.to_dict(orient="records"))
                 last_data = data
                 
                 chart_type = c_info.get("chart_type", "bar")
@@ -494,12 +574,12 @@ Columns: {global_columns}
         if not final_charts:
             return {"type": "text", "summary": "Failed to generate visualizations from the SQL provided."}
 
-        return {
+        return sanitize_for_json({
             "type": "dashboard",
             "summary": parsed.get("explanation", "Data Analysis complete."),
             "charts": final_charts,
             "rawData": last_data
-        }
+        })
         
     except Exception as e:
         err_str = str(e)

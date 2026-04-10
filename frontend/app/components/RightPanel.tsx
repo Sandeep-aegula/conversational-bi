@@ -111,27 +111,28 @@ export default function RightPanel({
         ) : (
           chatHistory.map((msg, idx) => {
             if (msg.type === "ai") {
+              const isOffTopic = msg.text.startsWith("⛔");
               // Highlight anomaly text
               const parts = msg.text.split(/(anomal\w*|Anomal\w*)/g);
               return (
                 <div key={idx} style={{ margin: "0 16px 12px" }}>
                   <div style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-card)",
+                    background: isOffTopic ? "rgba(255,107,43,0.06)" : "var(--bg-card)",
+                    border: `1px solid ${isOffTopic ? "rgba(255,107,43,0.35)" : "var(--border-card)"}`,
                     borderRadius: 10,
                     padding: "14px 16px",
                   }}>
                     <div style={{
                       fontFamily: "var(--font-share-tech-mono)",
                       fontSize: 10,
-                      color: "#00E5FF",
+                      color: isOffTopic ? "#FF6B2B" : "#00E5FF",
                       letterSpacing: 2,
                       marginBottom: 8,
-                    }}>• SYSTEM</div>
+                    }}>{isOffTopic ? "⚠ SCOPE_VIOLATION" : "• SYSTEM"}</div>
                     <div style={{
                       fontFamily: "var(--font-rajdhani)",
                       fontSize: 14,
-                      color: "var(--text-secondary)",
+                      color: isOffTopic ? "#FCA97A" : "var(--text-secondary)",
                       lineHeight: 1.6,
                       whiteSpace: "pre-wrap",
                       wordBreak: "break-word",
@@ -145,6 +146,7 @@ export default function RightPanel({
                   </div>
                 </div>
               );
+
             } else {
               return (
                 <div key={idx} style={{ margin: "0 16px 12px", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>

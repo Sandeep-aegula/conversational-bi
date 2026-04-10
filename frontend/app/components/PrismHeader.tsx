@@ -1,8 +1,10 @@
 import React from "react";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function PrismHeader() {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
 
   return (
     <header style={{
@@ -51,8 +53,9 @@ export default function PrismHeader() {
         ))}
       </nav>
 
-      {/* Theme Toggle */}
-      <div style={{ marginLeft: "auto" }}>
+      {/* Right: Theme Toggle + User */}
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           style={{
@@ -73,6 +76,78 @@ export default function PrismHeader() {
           <span style={{ fontSize: 13 }}>{theme === "dark" ? "🌙" : "☀️"}</span>
           {theme === "dark" ? "DARK_MODE" : "LIGHT_MODE"}
         </button>
+
+        {/* User chip */}
+        {user && (
+          <>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 20,
+              padding: "4px 12px 4px 6px",
+            }}>
+              {/* Avatar circle */}
+              <div style={{
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-orbitron)",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#fff",
+                flexShrink: 0,
+              }}>
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <span style={{
+                fontFamily: "var(--font-share-tech-mono)",
+                fontSize: 11,
+                color: "#fff",
+                letterSpacing: 0.5,
+                maxWidth: 100,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {user.name.toUpperCase()}
+              </span>
+            </div>
+
+            <button
+              onClick={logout}
+              title="Sign out"
+              style={{
+                background: "rgba(255,77,109,0.2)",
+                border: "1px solid rgba(255,77,109,0.5)",
+                borderRadius: 20,
+                padding: "4px 12px",
+                color: "#fff",
+                fontFamily: "var(--font-share-tech-mono)",
+                fontSize: 11,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,77,109,0.4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255,77,109,0.2)";
+              }}
+            >
+              ⏻ LOGOUT
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

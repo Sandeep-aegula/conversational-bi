@@ -26,6 +26,7 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -36,7 +37,9 @@ export default function RootLayout({
     <html lang="en" className={`${shareTechMono.variable} ${rajdhani.variable} ${orbitron.variable}`}>
       <body className="antialiased">
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

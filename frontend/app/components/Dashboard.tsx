@@ -14,7 +14,6 @@ import RightPanel from "./RightPanel";
 import SheetTabBar from "./SheetTabBar";
 import useSheets from "../hooks/useSheets";
 import ExportDropdown from "./ExportDropdown";
-import { CoreVolatility, SegmentIndex, LatencyBuffer, YieldFactor } from "./MiddlePanel";
 
 // Direct backend URL — avoids proxy issues with multipart uploads
 const BACKEND = "http://localhost:8000";
@@ -214,7 +213,7 @@ export default function Dashboard() {
     }
     setUploadError("");
     setUploadState("uploading");
-    loadInitialCharts([]); setChatHistory([]); setFileInfo(null);
+    // Do NOT clear existing charts/history yet — keep old visuals visible while uploading
 
     const formData = new FormData();
     formData.append("UPLOAD_SOURCE", file);
@@ -238,6 +237,9 @@ export default function Dashboard() {
         throw new Error(errorMsg);
       }
       const info: FileInfo = await res.json();
+      // New file uploaded successfully — now clear old visuals and replace with fresh state
+      loadInitialCharts([]);
+      setChatHistory([]);
       setFileInfo(info);
       setUploadState("done");
       setShowDataView(true);
@@ -387,14 +389,6 @@ Return them as a JSON object with a 'charts' array. Each chart must have a uniqu
                   />
                 )}
               </div>
-            </div>
-
-            {/* KPI Row */}
-            <div style={{ display: "flex", gap: 12, flexShrink: 0, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
-              <CoreVolatility />
-              <SegmentIndex />
-              <LatencyBuffer />
-              <YieldFactor />
             </div>
 
             {/* Main Content Area */}

@@ -40,7 +40,7 @@ const scatterData = [
   { x: 80, y: 20, r: 6, color: "#A3E635" },
 ];
 
-const miniBarData = [40, 60, 100, 70, 85];
+
 const regionalData = [
   { city: "TOKYO",  pct: 92, grad: "linear-gradient(90deg, #E11D91, #FF4D6D)" },
   { city: "LONDON", pct: 45, grad: "linear-gradient(90deg, #00E5FF, #00CED1)" },
@@ -86,67 +86,7 @@ function KpiValue({ children, color = "var(--text-primary)", size = 28 }: { chil
   );
 }
 
-// KPI Cards
-export function CoreVolatility() {
-  return (
-    <Card style={{ background: "var(--tint-violet)", borderTop: "2px solid #7C3AED", flex: 1, minWidth: 200 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <MonoLabel color="#7C3AED" size={9}>CORE<br />VOLATILITY</MonoLabel>
-        <span style={{ color: "var(--text-primary)", fontSize: 14 }}>△</span>
-      </div>
-      <KpiValue>84.2%</KpiValue>
-      <div style={{ height: 3, background: "var(--border-main)", borderRadius: 2 }}>
-        <div style={{ height: "100%", width: "65%", background: "linear-gradient(90deg, #7C3AED, #9333EA)", borderRadius: 2 }} />
-      </div>
-    </Card>
-  );
-}
 
-export function SegmentIndex() {
-  return (
-    <Card style={{ background: "var(--tint-magenta)", borderTop: "2px solid #E11D91", flex: 1, minWidth: 200 }}>
-      <MonoLabel color="#E11D91" size={9}>SEGMENT INDEX</MonoLabel>
-      <KpiValue>1,204</KpiValue>
-      <div style={{ display: "flex", gap: 4 }}>
-        {["#E11D91", "#FF4D6D", "var(--border-main)", "var(--border-main)", "var(--border-main)"].map((c, i) => (
-          <div key={i} style={{ width: 8, height: 8, borderRadius: 2, background: c }} />
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-export function LatencyBuffer() {
-  return (
-    <Card style={{ background: "var(--tint-cyan)", borderTop: "2px solid #00E5FF", flex: 1, minWidth: 200 }}>
-      <MonoLabel color="#00E5FF" size={9}>LATENCY BUFFER</MonoLabel>
-      <KpiValue>12ms</KpiValue>
-      <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: 28 }}>
-        {miniBarData.map((h, i) => (
-          <div key={i} style={{
-            width: 8,
-            height: `${h}%`,
-            background: "#00E5FF",
-            borderRadius: "2px 2px 0 0",
-          }} />
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-export function YieldFactor() {
-  return (
-    <Card style={{ background: "var(--tint-lime)", borderTop: "2px solid #A3E635", flex: 1, minWidth: 200 }}>
-      <MonoLabel color="#A3E635" size={9}>YIELD FACTOR</MonoLabel>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "10px 0 8px" }}>
-        <span style={{ fontFamily: "var(--font-share-tech-mono)", fontSize: 16, color: "#A3E635" }}>Φ</span>
-        <span style={{ fontFamily: "var(--font-orbitron)", fontWeight: 700, fontSize: 32, color: "#A3E635" }}>2.1</span>
-      </div>
-      <MonoLabel color="#A3E635" size={9} style={{ opacity: 0.6 }}>LIVE_OPTIMIZATION</MonoLabel>
-    </Card>
-  );
-}
 
 // Custom scatter dot
 function CustomScatterDot(props: any) {
@@ -174,14 +114,6 @@ export default function MiddlePanel() {
       overflowY: "auto",
       minWidth: 0,
     }}>
-      {/* KPI Row */}
-      <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
-        <CoreVolatility />
-        <SegmentIndex />
-        <LatencyBuffer />
-        <YieldFactor />
-      </div>
-
       {/* Chart Row 1 */}
       <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 240 }}>
         {/* Temporal Flux */}
